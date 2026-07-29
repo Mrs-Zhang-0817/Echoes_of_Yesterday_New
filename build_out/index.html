@@ -1733,12 +1733,58 @@ class Chapter03 {
   render(ctx) {
     const { width, height } = this.game;
 
-    ctx.fillStyle = '#100c09';
+    // 程序化地图背景：街道网格 + 噪点 + 暗角
+    ctx.fillStyle = '#1a1814';
     ctx.fillRect(0, 0, width, height);
 
-    if (this.game.images.mazeMap) {
-      drawImageCover(ctx, this.game.images.mazeMap, width, height);
+    // 道路网格线（固定种子，交错偏移模拟不规则街区）
+    ctx.save();
+    ctx.strokeStyle = 'rgba(70, 64, 56, 0.18)';
+    ctx.lineWidth = 1;
+    for (let x = 0; x < width; x += 80) {
+      ctx.beginPath();
+      ctx.moveTo(x + ((x * 7) % 13 - 6), 0);
+      ctx.lineTo(x + ((x * 7) % 13 - 6), height);
+      ctx.stroke();
     }
+    for (let y = 0; y < height; y += 80) {
+      ctx.beginPath();
+      ctx.moveTo(0, y + ((y * 11) % 13 - 6));
+      ctx.lineTo(width, y + ((y * 11) % 13 - 6));
+      ctx.stroke();
+    }
+    ctx.restore();
+
+    // 散布建筑块（小矩形，模拟街区建筑）
+    ctx.save();
+    ctx.fillStyle = 'rgba(45, 40, 35, 0.5)';
+    for (let i = 0; i < 80; i++) {
+      const bx = ((i * 173 + 89) % (width - 40));
+      const by = ((i * 241 + 137) % (height - 40));
+      const bw = 20 + ((i * 67) % 40);
+      const bh = 14 + ((i * 53) % 26);
+      ctx.fillRect(bx, by, bw, bh);
+    }
+    ctx.restore();
+
+    // 地图噪点
+    ctx.save();
+    for (let i = 0; i < 200; i++) {
+      const nx = ((i * 137 + 42) % width);
+      const ny = ((i * 251 + 97) % height);
+      ctx.fillStyle = `rgba(60, 55, 45, ${0.03 + (i % 5) * 0.005})`;
+      ctx.beginPath();
+      ctx.arc(nx, ny, 1 + (i % 3) * 0.5, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.restore();
+
+    // 暗角
+    const vignette = ctx.createRadialGradient(width / 2, height / 2, 150, width / 2, height / 2, 520);
+    vignette.addColorStop(0, 'rgba(0,0,0,0)');
+    vignette.addColorStop(1, 'rgba(0,0,0,0.4)');
+    ctx.fillStyle = vignette;
+    ctx.fillRect(0, 0, width, height);
 
     this.drawHoverNode(ctx);
     this.drawPlayerLine(ctx);
@@ -3500,16 +3546,24 @@ class Chapter06 {
   }
 
   _drawTableBg(ctx, width, height) {
-    // 暖色餐厅背景
-    const grad = ctx.createLinearGradient(0, 0, 0, height);
-    grad.addColorStop(0, '#2a2018');
-    grad.addColorStop(0.5, '#3a2e20');
-    grad.addColorStop(1, '#1e1812');
-    ctx.fillStyle = grad;
-    ctx.fillRect(0, 0, width, height);
+    // 优先使用真实餐桌场景底图，加载失败回退程序化渐变
+    const bgImg = this.game.images.deskBg;
+    if (bgImg) {
+      drawImageCover(ctx, bgImg, width, height);
+      // 暖色遮罩保持文字和互动元素可读性
+      ctx.fillStyle = 'rgba(30, 20, 15, 0.35)';
+      ctx.fillRect(0, 0, width, height);
+    } else {
+      const grad = ctx.createLinearGradient(0, 0, 0, height);
+      grad.addColorStop(0, '#2a2018');
+      grad.addColorStop(0.5, '#3a2e20');
+      grad.addColorStop(1, '#1e1812');
+      ctx.fillStyle = grad;
+      ctx.fillRect(0, 0, width, height);
+    }
 
-    // 桌面
-    ctx.fillStyle = '#4a3a28';
+    // 桌面（叠在背景上）
+    ctx.fillStyle = 'rgba(74, 58, 40, 0.6)';
     ctx.beginPath();
     ctx.ellipse(width / 2, height - 60, 500, 120, 0, Math.PI, 0);
     ctx.fill();
@@ -4828,6 +4882,19 @@ class Chapter08 {
   }
 
   renderSign(ctx) {
+    // 优先使用走廊场景底图作为背景
+    const bg = this.game.images.ch8_corridor;
+    if (bg) {
+      const iw = 1280, ih = 720;
+      const sc = Math.max(this.DW / (bg.width || iw), this.DH / (bg.height || ih));
+      const ox = (this.DW - (bg.width || iw) * sc) / 2;
+      const oy = (this.DH - (bg.height || ih) * sc) / 2;
+      ctx.drawImage(bg, ox, oy, (bg.width || iw) * sc, (bg.height || ih) * sc);
+      // 暗色遮罩保证表单可读
+      ctx.fillStyle = 'rgba(10, 6, 4, 0.45)';
+      ctx.fillRect(0, 0, this.DW, this.DH);
+    }
+
     const img = this.game.images.sign;
     if (!img) return;
     const iw = 1448, ih = 1086;
@@ -4856,11 +4923,25 @@ class Chapter08 {
   }
 
   renderPaper(ctx) {
-    const g = ctx.createLinearGradient(0, 0, this.DW * 0.4, this.DH);
-    g.addColorStop(0, '#fcf5e6'); g.addColorStop(0.4, '#f7ecd0');
-    g.addColorStop(0.7, '#f2e2bc'); g.addColorStop(1, '#e8d4a0');
-    ctx.fillStyle = g;
-    ctx.fillRect(0, 0, this.DW, this.DH);
+    // 优先使用真实纸张纹理底图
+    const paper = this.game.images.paperBase;
+    const noise = this.game.images.paperNoise;
+    if (paper) {
+      ctx.drawImage(paper, 0, 0, this.DW, this.DH);
+    } else {
+      const g = ctx.createLinearGradient(0, 0, this.DW * 0.4, this.DH);
+      g.addColorStop(0, '#fcf5e6'); g.addColorStop(0.4, '#f7ecd0');
+      g.addColorStop(0.7, '#f2e2bc'); g.addColorStop(1, '#e8d4a0');
+      ctx.fillStyle = g;
+      ctx.fillRect(0, 0, this.DW, this.DH);
+    }
+    // 纸张噪点叠加
+    if (noise) {
+      ctx.save();
+      ctx.globalAlpha = 0.08;
+      ctx.drawImage(noise, 0, 0, this.DW, this.DH);
+      ctx.restore();
+    }
 
     for (const d of this.texture) {
       ctx.fillStyle = `rgba(139,105,20,${d.a})`;
@@ -5155,33 +5236,50 @@ class Chapter09 {
   render(ctx) {
     ctx.clearRect(0, 0, DW, DH);
 
-    // 1. 背景渐变
-    const bgGrad = ctx.createLinearGradient(0, 0, 0, DH);
-    bgGrad.addColorStop(0, '#2a1810');
-    bgGrad.addColorStop(0.5, '#3d2018');
-    bgGrad.addColorStop(1, '#5a3028');
-    ctx.fillStyle = bgGrad;
-    ctx.fillRect(0, 0, DW, DH);
+    // 1. 优先使用真实阳台场景底图，加载失败回退程序化渐变
+    const balcImg = this.game.images.ch9_balcony;
+    if (balcImg) {
+      const sc = Math.max(DW / (balcImg.width || 1280), DH / (balcImg.height || 720));
+      const ox = (DW - (balcImg.width || 1280) * sc) / 2;
+      const oy = (DH - (balcImg.height || 720) * sc) / 2;
+      ctx.drawImage(balcImg, ox, oy, (balcImg.width || 1280) * sc, (balcImg.height || 720) * sc);
+      // 暗色遮罩保证音符可读性
+      ctx.fillStyle = 'rgba(12, 8, 6, 0.42)';
+      ctx.fillRect(0, 0, DW, DH);
+    } else {
+      const bgGrad = ctx.createLinearGradient(0, 0, 0, DH);
+      bgGrad.addColorStop(0, '#2a1810');
+      bgGrad.addColorStop(0.5, '#3d2018');
+      bgGrad.addColorStop(1, '#5a3028');
+      ctx.fillStyle = bgGrad;
+      ctx.fillRect(0, 0, DW, DH);
+    }
 
-    // 2. 窗框线条（程序化绘制）
-    ctx.save();
-    ctx.strokeStyle = '#4a3020';
-    ctx.lineWidth = 4;
-    // 窗框外框
-    ctx.strokeRect(40, 30, 1200, 200);
-    // 窗框内部十字线条
-    ctx.beginPath();
-    ctx.moveTo(40, 130); ctx.lineTo(1240, 130);
-    ctx.moveTo(660, 30); ctx.lineTo(660, 230);
-    ctx.stroke();
-
-    // 窗框顶部装饰横线
-    ctx.lineWidth = 2;
-    ctx.beginPath();
-    ctx.moveTo(40, 55); ctx.lineTo(1240, 55);
-    ctx.moveTo(40, 80); ctx.lineTo(1240, 80);
-    ctx.stroke();
-    ctx.restore();
+    // 2. 风铃管（真实素材替代程序化窗框线条）
+    const pipesImg = this.game.images.ch9_pipes;
+    if (pipesImg) {
+      const pw = pipesImg.width, ph = pipesImg.height;
+      const scP = Math.min(DW / pw, 350 / ph); // 缩放到合适大小放在顶部
+      const px = (DW - pw * scP) / 2;
+      const py = 10;
+      ctx.drawImage(pipesImg, px, py, pw * scP, ph * scP);
+    } else {
+      // 回退：程序化窗框
+      ctx.save();
+      ctx.strokeStyle = '#4a3020';
+      ctx.lineWidth = 4;
+      ctx.strokeRect(40, 30, 1200, 200);
+      ctx.beginPath();
+      ctx.moveTo(40, 130); ctx.lineTo(1240, 130);
+      ctx.moveTo(660, 30); ctx.lineTo(660, 230);
+      ctx.stroke();
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(40, 55); ctx.lineTo(1240, 55);
+      ctx.moveTo(40, 80); ctx.lineTo(1240, 80);
+      ctx.stroke();
+      ctx.restore();
+    }
 
     // 3. 吊线：从窗框底部垂下 5 条细线，对应音符目标位置
     ctx.save();
@@ -5405,12 +5503,21 @@ class Chapter10 {
   _renderPorridge(ctx) {
     const { width, height } = this.game;
 
-    // 暖色调室内渐变背景（#3d2018 → #1a0e06）
-    const bgGrad = ctx.createLinearGradient(0, 0, 0, height);
-    bgGrad.addColorStop(0, '#3d2018');
-    bgGrad.addColorStop(1, '#1a0e06');
-    ctx.fillStyle = bgGrad;
-    ctx.fillRect(0, 0, width, height);
+    // 优先使用真实客厅晨光场景底图
+    const bgImg = this.game.images.ch10_livingroom;
+    if (bgImg) {
+      drawImageCover(ctx, bgImg, width, height);
+      // 暗色遮罩保证互动元素可读性
+      ctx.fillStyle = 'rgba(18, 10, 6, 0.38)';
+      ctx.fillRect(0, 0, width, height);
+    } else {
+      // 回退：暖色调室内渐变
+      const bgGrad = ctx.createLinearGradient(0, 0, 0, height);
+      bgGrad.addColorStop(0, '#3d2018');
+      bgGrad.addColorStop(1, '#1a0e06');
+      ctx.fillStyle = bgGrad;
+      ctx.fillRect(0, 0, width, height);
+    }
 
     // 木桌（画面下方深棕色矩形条，约 1280×80）
     const tableY = height - 80;
@@ -5431,43 +5538,52 @@ class Chapter10 {
     ctx.fillStyle = 'rgba(255,240,220,0.04)';
     ctx.fillRect(0, tableY, width, 3);
 
-    // 碗（椭圆形，米白瓷碗 #f5ecd7）
-    ctx.save();
-    ctx.shadowColor = 'rgba(0,0,0,0.35)';
-    ctx.shadowBlur = 18;
-    ctx.shadowOffsetY = 6;
-    ctx.fillStyle = '#f5ecd7';
-    ctx.beginPath();
-    ctx.ellipse(this.bowlCx, this.bowlCy, this.bowlRx, this.bowlRy, 0, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.shadowBlur = 0;
-
-    // 碗口边缘高光
-    ctx.strokeStyle = 'rgba(255,255,255,0.3)';
-    ctx.lineWidth = 1.5;
-    ctx.beginPath();
-    ctx.ellipse(this.bowlCx, this.bowlCy - 2, this.bowlRx - 4, this.bowlRy - 4, 0, 0, Math.PI * 2);
-    ctx.stroke();
-
-    // 粥面（碗内稍小的椭圆，颜色 #e8d5b0）
-    ctx.fillStyle = '#e8d5b0';
-    ctx.beginPath();
-    ctx.ellipse(this.bowlCx, this.bowlCy - 6, this.bowlRx - 16, this.bowlRy - 10, 0, 0, Math.PI * 2);
-    ctx.fill();
-
-    // 粥面纹理细节 — 轻微起伏
-    ctx.strokeStyle = 'rgba(200,180,150,0.15)';
-    ctx.lineWidth = 1;
-    for (let i = 0; i < 6; i++) {
-      const angle = (i / 6) * Math.PI * 2;
-      const sx = this.bowlCx + Math.cos(angle) * (this.bowlRx - 30);
-      const sy = this.bowlCy - 6 + Math.sin(angle) * (this.bowlRy - 15);
+    // 碗：优先使用真实热粥素材图，回退程序化绘制
+    const bowlImg = this.game.images.ch10_porridge;
+    if (bowlImg) {
+      const bw = bowlImg.width, bh = bowlImg.height;
+      const scB = Math.min(250 / bw, 180 / bh);
+      const bx = this.bowlCx - bw * scB / 2;
+      const by = this.bowlCy - bh * scB / 2;
+      ctx.drawImage(bowlImg, bx, by, bw * scB, bh * scB);
+    } else {
+      // 程序化瓷碗
+      ctx.save();
+      ctx.shadowColor = 'rgba(0,0,0,0.35)';
+      ctx.shadowBlur = 18;
+      ctx.shadowOffsetY = 6;
+      ctx.fillStyle = '#f5ecd7';
       ctx.beginPath();
-      ctx.ellipse(sx, sy, 10, 5, angle, 0, Math.PI * 2);
-      ctx.stroke();
-    }
+      ctx.ellipse(this.bowlCx, this.bowlCy, this.bowlRx, this.bowlRy, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.shadowBlur = 0;
 
-    ctx.restore();
+      // 碗口边缘高光
+      ctx.strokeStyle = 'rgba(255,255,255,0.3)';
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.ellipse(this.bowlCx, this.bowlCy - 2, this.bowlRx - 4, this.bowlRy - 4, 0, 0, Math.PI * 2);
+      ctx.stroke();
+
+      // 粥面
+      ctx.fillStyle = '#e8d5b0';
+      ctx.beginPath();
+      ctx.ellipse(this.bowlCx, this.bowlCy - 6, this.bowlRx - 16, this.bowlRy - 10, 0, 0, Math.PI * 2);
+      ctx.fill();
+
+      // 粥面纹理细节
+      ctx.strokeStyle = 'rgba(200,180,150,0.15)';
+      ctx.lineWidth = 1;
+      for (let i = 0; i < 6; i++) {
+        const angle = (i / 6) * Math.PI * 2;
+        const sx = this.bowlCx + Math.cos(angle) * (this.bowlRx - 30);
+        const sy = this.bowlCy - 6 + Math.sin(angle) * (this.bowlRy - 15);
+        ctx.beginPath();
+        ctx.ellipse(sx, sy, 10, 5, angle, 0, Math.PI * 2);
+        ctx.stroke();
+      }
+      ctx.restore();
+    }
 
     // 蒸汽粒子
     ctx.save();

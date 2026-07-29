@@ -152,12 +152,21 @@ export class Chapter10 {
   _renderPorridge(ctx) {
     const { width, height } = this.game;
 
-    // 暖色调室内渐变背景（#3d2018 → #1a0e06）
-    const bgGrad = ctx.createLinearGradient(0, 0, 0, height);
-    bgGrad.addColorStop(0, '#3d2018');
-    bgGrad.addColorStop(1, '#1a0e06');
-    ctx.fillStyle = bgGrad;
-    ctx.fillRect(0, 0, width, height);
+    // 优先使用真实客厅晨光场景底图
+    const bgImg = this.game.images.ch10_livingroom;
+    if (bgImg) {
+      drawImageCover(ctx, bgImg, width, height);
+      // 暗色遮罩保证互动元素可读性
+      ctx.fillStyle = 'rgba(18, 10, 6, 0.38)';
+      ctx.fillRect(0, 0, width, height);
+    } else {
+      // 回退：暖色调室内渐变
+      const bgGrad = ctx.createLinearGradient(0, 0, 0, height);
+      bgGrad.addColorStop(0, '#3d2018');
+      bgGrad.addColorStop(1, '#1a0e06');
+      ctx.fillStyle = bgGrad;
+      ctx.fillRect(0, 0, width, height);
+    }
 
     // 木桌（画面下方深棕色矩形条，约 1280×80）
     const tableY = height - 80;
@@ -178,43 +187,52 @@ export class Chapter10 {
     ctx.fillStyle = 'rgba(255,240,220,0.04)';
     ctx.fillRect(0, tableY, width, 3);
 
-    // 碗（椭圆形，米白瓷碗 #f5ecd7）
-    ctx.save();
-    ctx.shadowColor = 'rgba(0,0,0,0.35)';
-    ctx.shadowBlur = 18;
-    ctx.shadowOffsetY = 6;
-    ctx.fillStyle = '#f5ecd7';
-    ctx.beginPath();
-    ctx.ellipse(this.bowlCx, this.bowlCy, this.bowlRx, this.bowlRy, 0, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.shadowBlur = 0;
-
-    // 碗口边缘高光
-    ctx.strokeStyle = 'rgba(255,255,255,0.3)';
-    ctx.lineWidth = 1.5;
-    ctx.beginPath();
-    ctx.ellipse(this.bowlCx, this.bowlCy - 2, this.bowlRx - 4, this.bowlRy - 4, 0, 0, Math.PI * 2);
-    ctx.stroke();
-
-    // 粥面（碗内稍小的椭圆，颜色 #e8d5b0）
-    ctx.fillStyle = '#e8d5b0';
-    ctx.beginPath();
-    ctx.ellipse(this.bowlCx, this.bowlCy - 6, this.bowlRx - 16, this.bowlRy - 10, 0, 0, Math.PI * 2);
-    ctx.fill();
-
-    // 粥面纹理细节 — 轻微起伏
-    ctx.strokeStyle = 'rgba(200,180,150,0.15)';
-    ctx.lineWidth = 1;
-    for (let i = 0; i < 6; i++) {
-      const angle = (i / 6) * Math.PI * 2;
-      const sx = this.bowlCx + Math.cos(angle) * (this.bowlRx - 30);
-      const sy = this.bowlCy - 6 + Math.sin(angle) * (this.bowlRy - 15);
+    // 碗：优先使用真实热粥素材图，回退程序化绘制
+    const bowlImg = this.game.images.ch10_porridge;
+    if (bowlImg) {
+      const bw = bowlImg.width, bh = bowlImg.height;
+      const scB = Math.min(250 / bw, 180 / bh);
+      const bx = this.bowlCx - bw * scB / 2;
+      const by = this.bowlCy - bh * scB / 2;
+      ctx.drawImage(bowlImg, bx, by, bw * scB, bh * scB);
+    } else {
+      // 程序化瓷碗
+      ctx.save();
+      ctx.shadowColor = 'rgba(0,0,0,0.35)';
+      ctx.shadowBlur = 18;
+      ctx.shadowOffsetY = 6;
+      ctx.fillStyle = '#f5ecd7';
       ctx.beginPath();
-      ctx.ellipse(sx, sy, 10, 5, angle, 0, Math.PI * 2);
-      ctx.stroke();
-    }
+      ctx.ellipse(this.bowlCx, this.bowlCy, this.bowlRx, this.bowlRy, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.shadowBlur = 0;
 
-    ctx.restore();
+      // 碗口边缘高光
+      ctx.strokeStyle = 'rgba(255,255,255,0.3)';
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.ellipse(this.bowlCx, this.bowlCy - 2, this.bowlRx - 4, this.bowlRy - 4, 0, 0, Math.PI * 2);
+      ctx.stroke();
+
+      // 粥面
+      ctx.fillStyle = '#e8d5b0';
+      ctx.beginPath();
+      ctx.ellipse(this.bowlCx, this.bowlCy - 6, this.bowlRx - 16, this.bowlRy - 10, 0, 0, Math.PI * 2);
+      ctx.fill();
+
+      // 粥面纹理细节
+      ctx.strokeStyle = 'rgba(200,180,150,0.15)';
+      ctx.lineWidth = 1;
+      for (let i = 0; i < 6; i++) {
+        const angle = (i / 6) * Math.PI * 2;
+        const sx = this.bowlCx + Math.cos(angle) * (this.bowlRx - 30);
+        const sy = this.bowlCy - 6 + Math.sin(angle) * (this.bowlRy - 15);
+        ctx.beginPath();
+        ctx.ellipse(sx, sy, 10, 5, angle, 0, Math.PI * 2);
+        ctx.stroke();
+      }
+      ctx.restore();
+    }
 
     // 蒸汽粒子
     ctx.save();

@@ -332,6 +332,19 @@ export class Chapter08 {
   }
 
   renderSign(ctx) {
+    // 优先使用走廊场景底图作为背景
+    const bg = this.game.images.ch8_corridor;
+    if (bg) {
+      const iw = 1280, ih = 720;
+      const sc = Math.max(this.DW / (bg.width || iw), this.DH / (bg.height || ih));
+      const ox = (this.DW - (bg.width || iw) * sc) / 2;
+      const oy = (this.DH - (bg.height || ih) * sc) / 2;
+      ctx.drawImage(bg, ox, oy, (bg.width || iw) * sc, (bg.height || ih) * sc);
+      // 暗色遮罩保证表单可读
+      ctx.fillStyle = 'rgba(10, 6, 4, 0.45)';
+      ctx.fillRect(0, 0, this.DW, this.DH);
+    }
+
     const img = this.game.images.sign;
     if (!img) return;
     const iw = 1448, ih = 1086;
@@ -360,11 +373,25 @@ export class Chapter08 {
   }
 
   renderPaper(ctx) {
-    const g = ctx.createLinearGradient(0, 0, this.DW * 0.4, this.DH);
-    g.addColorStop(0, '#fcf5e6'); g.addColorStop(0.4, '#f7ecd0');
-    g.addColorStop(0.7, '#f2e2bc'); g.addColorStop(1, '#e8d4a0');
-    ctx.fillStyle = g;
-    ctx.fillRect(0, 0, this.DW, this.DH);
+    // 优先使用真实纸张纹理底图
+    const paper = this.game.images.paperBase;
+    const noise = this.game.images.paperNoise;
+    if (paper) {
+      ctx.drawImage(paper, 0, 0, this.DW, this.DH);
+    } else {
+      const g = ctx.createLinearGradient(0, 0, this.DW * 0.4, this.DH);
+      g.addColorStop(0, '#fcf5e6'); g.addColorStop(0.4, '#f7ecd0');
+      g.addColorStop(0.7, '#f2e2bc'); g.addColorStop(1, '#e8d4a0');
+      ctx.fillStyle = g;
+      ctx.fillRect(0, 0, this.DW, this.DH);
+    }
+    // 纸张噪点叠加
+    if (noise) {
+      ctx.save();
+      ctx.globalAlpha = 0.08;
+      ctx.drawImage(noise, 0, 0, this.DW, this.DH);
+      ctx.restore();
+    }
 
     for (const d of this.texture) {
       ctx.fillStyle = `rgba(139,105,20,${d.a})`;

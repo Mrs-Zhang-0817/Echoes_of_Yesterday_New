@@ -170,33 +170,50 @@ export class Chapter09 {
   render(ctx) {
     ctx.clearRect(0, 0, DW, DH);
 
-    // 1. 背景渐变
-    const bgGrad = ctx.createLinearGradient(0, 0, 0, DH);
-    bgGrad.addColorStop(0, '#2a1810');
-    bgGrad.addColorStop(0.5, '#3d2018');
-    bgGrad.addColorStop(1, '#5a3028');
-    ctx.fillStyle = bgGrad;
-    ctx.fillRect(0, 0, DW, DH);
+    // 1. 优先使用真实阳台场景底图，加载失败回退程序化渐变
+    const balcImg = this.game.images.ch9_balcony;
+    if (balcImg) {
+      const sc = Math.max(DW / (balcImg.width || 1280), DH / (balcImg.height || 720));
+      const ox = (DW - (balcImg.width || 1280) * sc) / 2;
+      const oy = (DH - (balcImg.height || 720) * sc) / 2;
+      ctx.drawImage(balcImg, ox, oy, (balcImg.width || 1280) * sc, (balcImg.height || 720) * sc);
+      // 暗色遮罩保证音符可读性
+      ctx.fillStyle = 'rgba(12, 8, 6, 0.42)';
+      ctx.fillRect(0, 0, DW, DH);
+    } else {
+      const bgGrad = ctx.createLinearGradient(0, 0, 0, DH);
+      bgGrad.addColorStop(0, '#2a1810');
+      bgGrad.addColorStop(0.5, '#3d2018');
+      bgGrad.addColorStop(1, '#5a3028');
+      ctx.fillStyle = bgGrad;
+      ctx.fillRect(0, 0, DW, DH);
+    }
 
-    // 2. 窗框线条（程序化绘制）
-    ctx.save();
-    ctx.strokeStyle = '#4a3020';
-    ctx.lineWidth = 4;
-    // 窗框外框
-    ctx.strokeRect(40, 30, 1200, 200);
-    // 窗框内部十字线条
-    ctx.beginPath();
-    ctx.moveTo(40, 130); ctx.lineTo(1240, 130);
-    ctx.moveTo(660, 30); ctx.lineTo(660, 230);
-    ctx.stroke();
-
-    // 窗框顶部装饰横线
-    ctx.lineWidth = 2;
-    ctx.beginPath();
-    ctx.moveTo(40, 55); ctx.lineTo(1240, 55);
-    ctx.moveTo(40, 80); ctx.lineTo(1240, 80);
-    ctx.stroke();
-    ctx.restore();
+    // 2. 风铃管（真实素材替代程序化窗框线条）
+    const pipesImg = this.game.images.ch9_pipes;
+    if (pipesImg) {
+      const pw = pipesImg.width, ph = pipesImg.height;
+      const scP = Math.min(DW / pw, 350 / ph); // 缩放到合适大小放在顶部
+      const px = (DW - pw * scP) / 2;
+      const py = 10;
+      ctx.drawImage(pipesImg, px, py, pw * scP, ph * scP);
+    } else {
+      // 回退：程序化窗框
+      ctx.save();
+      ctx.strokeStyle = '#4a3020';
+      ctx.lineWidth = 4;
+      ctx.strokeRect(40, 30, 1200, 200);
+      ctx.beginPath();
+      ctx.moveTo(40, 130); ctx.lineTo(1240, 130);
+      ctx.moveTo(660, 30); ctx.lineTo(660, 230);
+      ctx.stroke();
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(40, 55); ctx.lineTo(1240, 55);
+      ctx.moveTo(40, 80); ctx.lineTo(1240, 80);
+      ctx.stroke();
+      ctx.restore();
+    }
 
     // 3. 吊线：从窗框底部垂下 5 条细线，对应音符目标位置
     ctx.save();

@@ -1,4 +1,4 @@
-import { drawImageCover, drawPrompt, roundedRect } from '../utils/sceneUtils.js';
+import { drawPrompt, roundedRect } from '../utils/sceneUtils.js';
 import { MAZE_CONFIG, validatePath, hitStart, getNode } from './ch03_mazeLayout.js';
 
 export class Chapter03 {
@@ -131,12 +131,58 @@ export class Chapter03 {
   render(ctx) {
     const { width, height } = this.game;
 
-    ctx.fillStyle = '#100c09';
+    // 程序化地图背景：街道网格 + 噪点 + 暗角
+    ctx.fillStyle = '#1a1814';
     ctx.fillRect(0, 0, width, height);
 
-    if (this.game.images.mazeMap) {
-      drawImageCover(ctx, this.game.images.mazeMap, width, height);
+    // 道路网格线（固定种子，交错偏移模拟不规则街区）
+    ctx.save();
+    ctx.strokeStyle = 'rgba(70, 64, 56, 0.18)';
+    ctx.lineWidth = 1;
+    for (let x = 0; x < width; x += 80) {
+      ctx.beginPath();
+      ctx.moveTo(x + ((x * 7) % 13 - 6), 0);
+      ctx.lineTo(x + ((x * 7) % 13 - 6), height);
+      ctx.stroke();
     }
+    for (let y = 0; y < height; y += 80) {
+      ctx.beginPath();
+      ctx.moveTo(0, y + ((y * 11) % 13 - 6));
+      ctx.lineTo(width, y + ((y * 11) % 13 - 6));
+      ctx.stroke();
+    }
+    ctx.restore();
+
+    // 散布建筑块（小矩形，模拟街区建筑）
+    ctx.save();
+    ctx.fillStyle = 'rgba(45, 40, 35, 0.5)';
+    for (let i = 0; i < 80; i++) {
+      const bx = ((i * 173 + 89) % (width - 40));
+      const by = ((i * 241 + 137) % (height - 40));
+      const bw = 20 + ((i * 67) % 40);
+      const bh = 14 + ((i * 53) % 26);
+      ctx.fillRect(bx, by, bw, bh);
+    }
+    ctx.restore();
+
+    // 地图噪点
+    ctx.save();
+    for (let i = 0; i < 200; i++) {
+      const nx = ((i * 137 + 42) % width);
+      const ny = ((i * 251 + 97) % height);
+      ctx.fillStyle = `rgba(60, 55, 45, ${0.03 + (i % 5) * 0.005})`;
+      ctx.beginPath();
+      ctx.arc(nx, ny, 1 + (i % 3) * 0.5, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.restore();
+
+    // 暗角
+    const vignette = ctx.createRadialGradient(width / 2, height / 2, 150, width / 2, height / 2, 520);
+    vignette.addColorStop(0, 'rgba(0,0,0,0)');
+    vignette.addColorStop(1, 'rgba(0,0,0,0.4)');
+    ctx.fillStyle = vignette;
+    ctx.fillRect(0, 0, width, height);
 
     this.drawHoverNode(ctx);
     this.drawPlayerLine(ctx);

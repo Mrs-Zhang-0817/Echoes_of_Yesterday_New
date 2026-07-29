@@ -1,4 +1,4 @@
-import { drawPrompt, roundedRect } from '../utils/sceneUtils.js';
+import { drawImageCover, drawPrompt, roundedRect } from '../utils/sceneUtils.js';
 import { BOWL, COLLECTION_PANEL, SCENT_PARTICLES, GATING_CONFIG, hitBowl, distToTarget } from '../utils/tableLayout.js';
 
 function vibe(ms) {
@@ -368,16 +368,24 @@ export class Chapter06 {
   }
 
   _drawTableBg(ctx, width, height) {
-    // 暖色餐厅背景
-    const grad = ctx.createLinearGradient(0, 0, 0, height);
-    grad.addColorStop(0, '#2a2018');
-    grad.addColorStop(0.5, '#3a2e20');
-    grad.addColorStop(1, '#1e1812');
-    ctx.fillStyle = grad;
-    ctx.fillRect(0, 0, width, height);
+    // 优先使用真实餐桌场景底图，加载失败回退程序化渐变
+    const bgImg = this.game.images.deskBg;
+    if (bgImg) {
+      drawImageCover(ctx, bgImg, width, height);
+      // 暖色遮罩保持文字和互动元素可读性
+      ctx.fillStyle = 'rgba(30, 20, 15, 0.35)';
+      ctx.fillRect(0, 0, width, height);
+    } else {
+      const grad = ctx.createLinearGradient(0, 0, 0, height);
+      grad.addColorStop(0, '#2a2018');
+      grad.addColorStop(0.5, '#3a2e20');
+      grad.addColorStop(1, '#1e1812');
+      ctx.fillStyle = grad;
+      ctx.fillRect(0, 0, width, height);
+    }
 
-    // 桌面
-    ctx.fillStyle = '#4a3a28';
+    // 桌面（叠在背景上）
+    ctx.fillStyle = 'rgba(74, 58, 40, 0.6)';
     ctx.beginPath();
     ctx.ellipse(width / 2, height - 60, 500, 120, 0, Math.PI, 0);
     ctx.fill();

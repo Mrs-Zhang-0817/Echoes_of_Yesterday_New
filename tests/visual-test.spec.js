@@ -2,15 +2,21 @@
  * Playwright 截图 + 多模态模型视觉排查
  *
  * 用法：
- *   1. 先构建游戏：     node build.cjs
- *   2. 启动服务：        npx serve build_out -p 3000 -s
- *   3. 运行视觉测试：   npx playwright test tests/visual-test.spec.js
+ *   1. 先构建游戏：       node build.cjs
+ *   2. 启动服务：          npx serve build_out -p 3000 -s
+ *   3. 设置 API key 并运行：
+ *        VLM_API_KEY=sk-xxx npm run visual-test
  *
- * 环境变量（可选）：
- *   VLM_API_KEY    — 多模态模型 API key（默认使用内置规则分析）
- *   VLM_API_URL    — 兼容 OpenAI / Anthropic 的 API 端点
- *   VLM_MODEL      — 模型名（默认 gpt-4o）
- *   SERVER_URL     — 游戏页面地址（默认 http://localhost:3000）
+ * 已预配置阶跃星辰 Step 3.7 Flash（视觉多模态，OpenAI 兼容格式）：
+ *   - 端点： https://api.stepfun.com/v1/chat/completions
+ *   - 模型： step-3.7-flash
+ *   - 认证： Bearer token
+ *
+ * 环境变量：
+ *   VLM_API_KEY       — 必填。阶跃星辰 API key（sk-xxx）
+ *   VLM_API_URL       — 可选。其他兼容 OpenAI 格式的端点（默认 https://api.stepfun.com/v1/chat/completions）
+ *   VLM_MODEL         — 可选。模型名（默认 step-3.7-flash）
+ *   SERVER_URL        — 可选。游戏页面地址（默认 http://localhost:3000）
  */
 
 import { test, expect } from 'playwright/test';
@@ -21,11 +27,11 @@ import { fileURLToPath } from 'url';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const REPORT_DIR = path.join(__dirname, '..', 'visual-reports');
 
-// ============ 配置 ============
+// ============ 配置（默认指向阶跃星辰 Step 3.7 Flash）============
 const SERVER_URL = process.env.SERVER_URL || 'http://localhost:3000';
 const VLM_API_KEY = process.env.VLM_API_KEY || '';
-const VLM_API_URL = process.env.VLM_API_URL || '';
-const VLM_MODEL = process.env.VLM_MODEL || '';
+const VLM_API_URL = process.env.VLM_API_URL || 'https://api.stepfun.com/v1/chat/completions';
+const VLM_MODEL = process.env.VLM_MODEL || 'step-3.7-flash';
 
 // ============ 十章节跳转映射 ============
 const CHAPTER_HOTKEYS = {
@@ -186,7 +192,7 @@ async function analyzeViaVLM(imagePath, chapterId, meta) {
             role: 'user',
             content: [
               { type: 'text', text: prompt },
-              { type: 'image_url', image_url: { url: `data:image/png;base64,${imageBase64}`, detail: 'high' } },
+              { type: 'image_url', image_url: { url: `data:image/png;base64,${imageBase64}` } },
             ],
           },
         ],
