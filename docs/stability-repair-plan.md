@@ -36,11 +36,11 @@
 - P1：ch05 memory=40 显示 35%、ch06 memory=52 显示 45%（统一为实际值或纯叙事文案）
 - P2：DebugAPI inspect 输出过滤大数组；3 个缺 Echoes dist 的测试标记 skip
 
-## Phase 3 · 结构加固
+## Phase 3 · 结构加固  ✅ 部分完成（2026-07-30）
 
-- ChapterManager 章节完成契约：统一 overlay → markChapterComplete → switchTo，不许旁路
-- Loader 素材加载失败回退：图片缺失/加载失败时渲染程序化占位，不白屏不卡关
-- 每章生命周期检查：enter/exit 清理定时器、事件监听、粒子数组
+- ✅ **Loader 素材加载失败回退**：单图失败不再 `reject`，降级为程序化占位图（canvas：底色+斜纹+文件名），游戏不白屏不卡关。已 Playwright 验证（拦截 `ch8_radio.png` 真实失败 → 仍 boot、占位生效、全 10 章可推进、0 致命错误）
+- ⏸ **ChapterManager 章节完成契约**：经评估已健壮——`switchTo` 有 `registry.has` 守卫、完成统一走 `update()` 检测 `isComplete`→overlay→`next()`→`switchTo`，无旁路风险，暂不改动以避免回归
+- ⏸ **每章生命周期检查**（定时器/监听/粒子清理）：属 10 章大范围审计，暂停以避免引入回归，留待 Phase 5 合并前统一处理
 
 ## Phase 4 · 美术替换协议（与修复并行，互不干扰）
 
