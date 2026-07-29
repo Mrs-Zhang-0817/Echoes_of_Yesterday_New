@@ -1,0 +1,1963 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <title>昨日重现</title>
+  <style>
+    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+    html, body {
+      width: 100%; height: 100%; height: 100dvh;
+      overflow: hidden;
+      position: fixed; top: 0; left: 0;
+      background: #0d0805;
+      touch-action: none;
+      -webkit-touch-callout: none;
+      -webkit-user-select: none;
+      user-select: none;
+      -webkit-tap-highlight-color: transparent;
+      overscroll-behavior: none;
+      font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", sans-serif;
+    }
+    canvas {
+      display: block;
+      position: absolute;
+      touch-action: none;
+    }
+    #loading {
+      position: fixed; inset: 0; z-index: 100;
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      background: #0d0805;
+      color: #d4b896;
+      transition: opacity 0.5s;
+    }
+    #loading.hidden { opacity: 0; pointer-events: none; }
+    #loading .title { font-size: clamp(18px, 4vw, 28px); margin-bottom: 16px; letter-spacing: 0.1em; }
+    #loading .bar-wrap {
+      width: min(200px, 40vw); height: 3px;
+      background: rgba(212,184,150,0.2);
+      border-radius: 2px; overflow: hidden;
+    }
+    #loading .bar-fill {
+      height: 100%; width: 0%;
+      background: #d4b896;
+      border-radius: 2px;
+      transition: width 0.3s;
+    }
+    #loading .hint { font-size: clamp(11px, 2vw, 14px); margin-top: 12px; opacity: 0.6; }
+  </style>
+</head>
+<body>
+  <div id="loading">
+    <div class="title">昨日重现</div>
+    <div class="bar-wrap"><div class="bar-fill" id="loadBar"></div></div>
+    <div class="hint" id="loadHint">正在准备记忆碎片...</div>
+  </div>
+  <canvas id="gameCanvas" aria-label="昨日重现"></canvas>
+  <script>
+
+// ---- src/core/Game.js ----
+class Game {
+  constructor(game) {
+    this.game = game;
+    this.lastTime = 0;
+    this.running = false;
+  }
+
+  start() {
+    this.running = true;
+    this.lastTime = performance.now();
+    requestAnimationFrame(timestamp => this.loop(timestamp));
+  }
+
+  loop(timestamp) {
+    if (!this.running) return;
+    const dt = Math.min((timestamp - this.lastTime) / 1000, 0.1);
+    this.lastTime = timestamp;
+    this.game.sceneManager.update(dt);
+    this.game.ctx.clearRect(0, 0, this.game.width, this.game.height);
+    this.game.sceneManager.currentScene?.render(this.game.ctx);
+    this.game.sceneManager.renderTransition(this.game.ctx);
+    requestAnimationFrame(next => this.loop(next));
+  }
+}
+
+
+// ---- src/core/InputManager.js ----
+class InputManager {
+  constructor(canvas, width, height) {
+    this.canvas = canvas;
+    this.width = width;
+    this.height = height;
+    this.handlers = {};
+
+    // 绑定处理函数以便后续解绑
+    this._onPointerDown = (event) => this.dispatch('down', event);
+    this._onPointerMove = (event) => this.dispatch('move', event);
+    this._onPointerUp = (event) => this.dispatch('up', event);
+    this._onPointerCancel = (event) => this.dispatch('cancel', event);
+    this._onPointerLeave = (event) => this.dispatch('leave', event);
+    this._onContextMenu = (event) => event.preventDefault(); // 阻止长按菜单
+
+    canvas.addEventListener('pointerdown', this._onPointerDown, { passive: false });
+    canvas.addEventListener('pointermove', this._onPointerMove, { passive: false });
+    canvas.addEventListener('pointerup', this._onPointerUp, { passive: false });
+    canvas.addEventListener('pointercancel', this._onPointerCancel, { passive: false });
+    canvas.addEventListener('pointerleave', this._onPointerLeave, { passive: false });
+    canvas.addEventListener('contextmenu', this._onContextMenu);
+
+    // 阻止 iOS 手势
+    canvas.addEventListener('gesturestart', e => e.preventDefault());
+    canvas.addEventListener('gesturechange', e => e.preventDefault());
+    canvas.addEventListener('gestureend', e => e.preventDefault());
+  }
+
+  setHandlers(handlers = {}) {
+    this.handlers = handlers;
+  }
+
+  dispatch(type, event) {
+    const handler = this.handlers[type];
+    if (!handler) return;
+    event.preventDefault();
+
+    const rect = this.canvas.getBoundingClientRect();
+    const scaleX = this.width / rect.width;
+    const scaleY = this.height / rect.height;
+
+    const point = {
+      x: (event.clientX - rect.left) * scaleX,
+      y: (event.clientY - rect.top) * scaleY,
+      pointerId: event.pointerId,
+      pointerType: event.pointerType,
+    };
+
+    if (type === 'down') {
+      try { this.canvas.setPointerCapture(event.pointerId); } catch {}
+    }
+    if (type === 'up' || type === 'cancel') {
+      try {
+        if (this.canvas.hasPointerCapture?.(event.pointerId))
+          this.canvas.releasePointerCapture(event.pointerId);
+      } catch {}
+    }
+
+    handler(point);
+  }
+
+  destroy() {
+    this.canvas.removeEventListener('pointerdown', this._onPointerDown);
+    this.canvas.removeEventListener('pointermove', this._onPointerMove);
+    this.canvas.removeEventListener('pointerup', this._onPointerUp);
+    this.canvas.removeEventListener('pointercancel', this._onPointerCancel);
+    this.canvas.removeEventListener('pointerleave', this._onPointerLeave);
+    this.canvas.removeEventListener('contextmenu', this._onContextMenu);
+    this.handlers = {};
+  }
+}
+
+
+// ---- src/core/Loader.js ----
+class Loader {
+  static loadImages(manifest, onProgress = () => {}) {
+    const entries = Object.entries(manifest);
+    let loaded = 0;
+
+    return Promise.all(entries.map(([key, source]) => new Promise((resolve, reject) => {
+      const image = new Image();
+      image.onload = () => {
+        loaded += 1;
+        onProgress(loaded, entries.length, key);
+        resolve([key, image]);
+      };
+      image.onerror = () => reject(new Error(`图片加载失败：${source}`));
+      image.src = source;
+    }))).then(images => Object.fromEntries(images));
+  }
+}
+
+
+// ---- src/core/ChapterManager.js ----
+class ChapterManager {
+  constructor(game) {
+    this.game = game;
+    this.registry = new Map();
+    this.currentChapter = null;
+    this.pendingChapter = null;
+    this.transition = { phase: 'idle', alpha: 0, duration: 0.3 };
+    this.chapterOrder = [];
+  }
+
+  register(name, ChapterClass) {
+    this.registry.set(name, ChapterClass);
+    if (!this.chapterOrder.includes(name)) {
+      this.chapterOrder.push(name);
+    }
+  }
+
+  switchTo(name) {
+    if (!this.registry.has(name)) return;
+    if (!this.currentChapter) {
+      this.activate(name);
+      this.transition = { ...this.transition, phase: 'in', alpha: 1 };
+      return;
+    }
+    this.pendingChapter = name;
+    this.transition.phase = 'out';
+  }
+
+  next() {
+    const idx = this.chapterOrder.indexOf(this.pendingChapter || this.currentName);
+    if (idx >= 0 && idx < this.chapterOrder.length - 1) {
+      this.switchTo(this.chapterOrder[idx + 1]);
+    }
+  }
+
+  get currentName() {
+    for (const [name, cls] of this.registry) {
+      if (this.currentChapter instanceof cls) return name;
+    }
+    return null;
+  }
+
+  activate(name) {
+    if (this.currentChapter) {
+      this.currentChapter.onExit?.();
+      this.currentChapter = null;
+    }
+    const ChapterClass = this.registry.get(name);
+    if (!ChapterClass) return;
+    this.currentChapter = new ChapterClass(this.game);
+    this.currentChapter.onEnter?.();
+  }
+
+  update(dt) {
+    this.currentChapter?.update?.(dt);
+
+    // 检查是否完成
+    if (this.currentChapter?.isComplete && this.transition.phase === 'idle') {
+      this.game.overlay?.show?.({
+        type: 'complete',
+        title: this.currentChapter.completeTitle || '记忆恢复了一些……',
+        message: this.currentChapter.completeMessage || '',
+        buttons: [
+          { text: '继续下一章节', action: () => this.next() }
+        ]
+      });
+      // 只弹一次
+      this.transition.phase = 'blocked';
+      return;
+    }
+
+    if (this.transition.phase === 'blocked') return;
+
+    if (this.transition.phase === 'out') {
+      this.transition.alpha += dt / this.transition.duration;
+      if (this.transition.alpha >= 1) {
+        this.transition.alpha = 1;
+        this.activate(this.pendingChapter);
+        this.pendingChapter = null;
+        this.transition.phase = 'in';
+      }
+    } else if (this.transition.phase === 'in') {
+      this.transition.alpha -= dt / this.transition.duration;
+      if (this.transition.alpha <= 0) {
+        this.transition.alpha = 0;
+        this.transition.phase = 'idle';
+      }
+    }
+  }
+
+  renderTransition(ctx) {
+    if (this.transition.alpha <= 0) return;
+    ctx.save();
+    ctx.fillStyle = `rgba(0, 0, 0, ${this.transition.alpha})`;
+    ctx.fillRect(0, 0, this.game.width, this.game.height);
+    ctx.restore();
+  }
+}
+
+
+// ---- src/core/ProgressStore.js ----
+class ProgressStore {
+  constructor(key = 'ye_v1_progress') {
+    this.key = key;
+  }
+
+  save(data) {
+    try {
+      localStorage.setItem(this.key, JSON.stringify(data));
+    } catch {
+      // 隐私模式或无存储空间，静默失败
+    }
+  }
+
+  load() {
+    try {
+      const raw = localStorage.getItem(this.key);
+      return raw ? JSON.parse(raw) : null;
+    } catch {
+      return null;
+    }
+  }
+
+  markChapterComplete(chapterNum, memoryValue) {
+    const data = this.load() || { chapter: 1, memory: 0, completed: [], ts: Date.now() };
+    if (!data.completed.includes(chapterNum)) {
+      data.completed.push(chapterNum);
+    }
+    data.chapter = Math.max(data.chapter, chapterNum);
+    data.memory = Math.max(data.memory, memoryValue);
+    data.ts = Date.now();
+    this.save(data);
+    return data;
+  }
+
+  reset() {
+    try {
+      localStorage.removeItem(this.key);
+    } catch {}
+  }
+}
+
+
+// ---- src/core/Overlay.js ----
+
+
+class Overlay {
+  constructor(game) {
+    this.game = game;
+    this.active = null; // null 或 { type, title, message, buttons, time }
+    this._inputHandlers = null;
+  }
+
+  show(config) {
+    this.active = { ...config, time: 0 };
+    // 接管输入：在弹层激活时，原始章节的 input handler 被临时覆盖
+    this._inputHandlers = {
+      down: point => this.handleDown(point),
+      move: () => {},
+      up: () => {},
+      cancel: () => {},
+    };
+  }
+
+  hide() {
+    this.active = null;
+    // 恢复时由章节的 onEnter 重新设置 handler
+  }
+
+  isActive() {
+    return this.active !== null;
+  }
+
+  handleDown(point) {
+    if (!this.active) return;
+    const buttons = this.active.buttons || [];
+    for (const btn of buttons) {
+      if (this.hitButton(point, btn)) {
+        btn.action?.();
+        this.hide();
+        return;
+      }
+    }
+  }
+
+  hitButton(point, btn) {
+    const bbox = btn.bbox;
+    if (!bbox) return false;
+    return point.x >= bbox.x && point.x <= bbox.x + bbox.w &&
+           point.y >= bbox.y && point.y <= bbox.y + bbox.h;
+  }
+
+  update(dt) {
+    if (this.active) this.active.time += dt;
+  }
+
+  render(ctx) {
+    if (!this.active) return;
+    const { width, height } = this.game;
+    const config = this.active;
+
+    // 半透明遮罩
+    ctx.save();
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.6)';
+    ctx.fillRect(0, 0, width, height);
+
+    // 居中卡片
+    const cardW = 420;
+    const cardH = 280;
+    const cx = (width - cardW) / 2;
+    const cy = (height - cardH) / 2;
+
+    // 卡片背景
+    roundedRect(ctx, cx, cy, cardW, cardH, 16);
+    const cardGrad = ctx.createLinearGradient(cx, cy, cx, cy + cardH);
+    cardGrad.addColorStop(0, '#fcf5e6');
+    cardGrad.addColorStop(1, '#f0deb4');
+    ctx.fillStyle = cardGrad;
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(42, 26, 12, 0.2)';
+    ctx.lineWidth = 1;
+    ctx.stroke();
+
+    // 标题
+    ctx.fillStyle = '#2a1a0c';
+    ctx.font = 'bold 24px system-ui, "PingFang SC", sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(config.title, width / 2, cy + 48);
+
+    // 消息
+    if (config.message) {
+      ctx.fillStyle = '#4d3420';
+      ctx.font = '17px system-ui, "PingFang SC", sans-serif';
+      ctx.fillText(config.message, width / 2, cy + 100);
+    }
+
+    // 按钮
+    const btns = config.buttons || [];
+    const btnW = 180;
+    const btnH = 44;
+    const gap = 16;
+    const totalBtnW = btns.length * btnW + (btns.length - 1) * gap;
+    const startBtnX = (width - totalBtnW) / 2;
+    const btnY = cy + cardH - 50 - btnH / 2;
+
+    config._btnRects = [];
+
+    for (let i = 0; i < btns.length; i++) {
+      const bx = startBtnX + i * (btnW + gap);
+      const by = btnY - btnH / 2;
+      config._btnRects.push({ x: bx, y: by, w: btnW, h: btnH });
+      btns[i].bbox = { x: bx, y: by, w: btnW, h: btnH };
+
+      // 按钮背景
+      roundedRect(ctx, bx, by, btnW, btnH, 8);
+      ctx.fillStyle = '#4d3420';
+      ctx.fill();
+
+      // 按钮文字
+      ctx.fillStyle = '#fcf5e6';
+      ctx.font = '600 16px system-ui, "PingFang SC", sans-serif';
+      ctx.fillText(btns[i].text, bx + btnW / 2, by + btnH / 2);
+    }
+
+    ctx.restore();
+  }
+}
+
+
+// ---- src/utils/sceneUtils.js ----
+function drawImageCover(ctx, image, width, height) {
+  const scale = Math.max(width / image.width, height / image.height);
+  const drawWidth = image.width * scale;
+  const drawHeight = image.height * scale;
+  ctx.drawImage(image, (width - drawWidth) / 2, (height - drawHeight) / 2, drawWidth, drawHeight);
+}
+
+function drawImageContain(ctx, image, width, height) {
+  const scale = Math.min(width / image.width, height / image.height);
+  const drawWidth = image.width * scale;
+  const drawHeight = image.height * scale;
+  ctx.drawImage(image, (width - drawWidth) / 2, (height - drawHeight) / 2, drawWidth, drawHeight);
+}
+
+function roundedRect(ctx, x, y, width, height, radius) {
+  ctx.beginPath();
+  ctx.roundRect(x, y, width, height, radius);
+}
+
+function drawPrompt(ctx, text, x, y, emphasis = 0) {
+  ctx.save();
+  const fontSize = 22 + emphasis * 5;
+  ctx.font = `500 ${fontSize}px system-ui, "PingFang SC", sans-serif`;
+  const paddingX = 24;
+  const textWidth = ctx.measureText(text).width;
+  const bgWidth = textWidth + paddingX * 2;
+  const bgHeight = 44 + emphasis * 6;
+  roundedRect(ctx, x - bgWidth / 2, y - bgHeight / 2, bgWidth, bgHeight, bgHeight / 2);
+  ctx.fillStyle = `rgba(255, 255, 255, ${0.75 + emphasis * 0.2})`;
+  ctx.fill();
+  ctx.fillStyle = '#23170d';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText(text, x, y);
+  ctx.restore();
+}
+
+// 测量文字宽度的工具函数
+function measureText(ctx, text, fontSize = 24) {
+  ctx.save();
+  ctx.font = `500 ${fontSize}px system-ui, "PingFang SC", sans-serif`;
+  const w = ctx.measureText(text).width;
+  ctx.restore();
+  return w;
+}
+
+
+// ---- src/utils/puzzleLayout.js ----
+const DEFAULT_PUZZLE_LAYOUT = {
+  panel: { x: 370, y: 120, width: 540, height: 405 },
+  pieceScale: 0.7,
+  safeMargin: 24,
+  snapRadius: 50,
+  mobileInstantSnap: true,
+  touchSnapRadius: 96,
+  sourceCrop: { x: 26, y: 20, width: 1396, height: 1047 },
+  slots: [
+    { x: 397, y: 10 }, { x: 577, y: 10 }, { x: 757, y: 10 },
+    { x: 42, y: 170 }, { x: 42, y: 330 }, { x: 1112, y: 170 },
+    { x: 1112, y: 330 }, { x: 460, y: 602 }, { x: 694, y: 602 },
+  ],
+  stacks: [],
+};
+
+// ---- 切片定义 ----
+// 每个碎片从原图中采样的源矩形（整数像素），避免浮点缝隙
+function getSourceRects(imageWidth, imageHeight) {
+  // 前两列/行各取 floor，最后一列/行取得剩余像素，确保完整覆盖原图。
+  const cellW = Math.floor(imageWidth / 3);
+  const cellH = Math.floor(imageHeight / 3);
+  const w0 = cellW;
+  const w1 = cellW;
+  const w2 = imageWidth - cellW * 2;
+  const h0 = cellH;
+  const h1 = cellH;
+  const h2 = imageHeight - cellH * 2;
+
+  return [
+    // row 0
+    { sourceX: 0,          sourceY: 0,     sourceW: w0, sourceH: h0 },
+    { sourceX: cellW,      sourceY: 0,     sourceW: w1, sourceH: h0 },
+    { sourceX: cellW * 2,  sourceY: 0,     sourceW: w2, sourceH: h0 },
+    // row 1
+    { sourceX: 0,          sourceY: cellH, sourceW: w0, sourceH: h1 },
+    { sourceX: cellW,      sourceY: cellH, sourceW: w1, sourceH: h1 },
+    { sourceX: cellW * 2,  sourceY: cellH, sourceW: w2, sourceH: h1 },
+    // row 2
+    { sourceX: 0,          sourceY: cellH*2, sourceW: w0, sourceH: h2 },
+    { sourceX: cellW,      sourceY: cellH*2, sourceW: w1, sourceH: h2 },
+    { sourceX: cellW * 2,  sourceY: cellH*2, sourceW: w2, sourceH: h2 },
+  ];
+}
+
+function shuffle(values, rng) {
+  const output = [...values];
+  for (let index = output.length - 1; index > 0; index -= 1) {
+    const other = Math.floor(rng() * (index + 1));
+    [output[index], output[other]] = [output[other], output[index]];
+  }
+  return output;
+}
+
+function createPuzzlePieces(imageWidth, imageHeight, rng = Math.random, layout = DEFAULT_PUZZLE_LAYOUT) {
+  // 裁掉原图自带的黑色哑边，再用整数切片完整覆盖可见画面。
+  const sourceCrop = layout.sourceCrop ?? { x: 0, y: 0, width: imageWidth, height: imageHeight };
+  const rects = getSourceRects(sourceCrop.width, sourceCrop.height).map(rect => ({
+    ...rect,
+    sourceX: rect.sourceX + sourceCrop.x,
+    sourceY: rect.sourceY + sourceCrop.y,
+  }));
+
+  const ids = shuffle(Array.from({ length: 9 }, (_, id) => id), rng);
+  const cellWidth = layout.panel.width / 3;
+  const cellHeight = layout.panel.height / 3;
+  const looseWidth = cellWidth * layout.pieceScale;
+  const looseHeight = cellHeight * layout.pieceScale;
+
+  return ids.map((id, order) => {
+    const row = Math.floor(id / 3);
+    const column = id % 3;
+    const rect = rects[id];
+    const piece = {
+      id,
+      // 用整数像素的裁剪矩形（不再靠浮点 sourceX/sourceY 自己除）
+      sourceX: rect.sourceX,
+      sourceY: rect.sourceY,
+      sourceW: rect.sourceW,
+      sourceH: rect.sourceH,
+      targetX: layout.panel.x + column * cellWidth,
+      targetY: layout.panel.y + row * cellHeight,
+      x: 0,
+      y: 0,
+      width: looseWidth,
+      height: looseHeight,
+      targetWidth: cellWidth,
+      targetHeight: cellHeight,
+      looseWidth,
+      looseHeight,
+      placed: false,
+      dragging: false,
+      highlight: 0,
+      stackIndex: null,
+    };
+
+    if (order < layout.slots.length) {
+      piece.x = layout.slots[order].x;
+      piece.y = layout.slots[order].y;
+    } else {
+      const stack = layout.stacks[(order - layout.slots.length) % layout.stacks.length];
+      const stackIndex = order - layout.slots.length;
+      piece.x = stack.x + stack.offsetX * stackIndex;
+      piece.y = stack.y + stack.offsetY * stackIndex;
+      piece.stackIndex = stackIndex;
+    }
+    piece.homeX = piece.x;
+    piece.homeY = piece.y;
+    piece.ejecting = false;
+    piece.ejection = null;
+    return piece;
+  });
+}
+
+function getTopmostPieceAt(pieces, x, y) {
+  return [...pieces].reverse().find(piece =>
+    !piece.placed && !piece.ejecting &&
+    x >= piece.x && x <= piece.x + piece.width &&
+    y >= piece.y && y <= piece.y + piece.height
+  ) ?? null;
+}
+
+function ejectPiecesBlockingTarget(pieces, restoredPiece) {
+  const rx = restoredPiece.x;
+  const ry = restoredPiece.y;
+  const rw = restoredPiece.targetWidth ?? restoredPiece.width;
+  const rh = restoredPiece.targetHeight ?? restoredPiece.height;
+
+  const ejected = pieces.filter(piece => {
+    if (piece === restoredPiece || piece.placed || piece.ejecting) return false;
+    return piece.x < rx + rw && piece.x + piece.width > rx &&
+           piece.y < ry + rh && piece.y + piece.height > ry;
+  });
+
+  for (const piece of ejected) {
+    piece.ejecting = true;
+    // 恢复为松散尺寸
+    piece.width = piece.looseWidth ?? piece.width;
+    piece.height = piece.looseHeight ?? piece.height;
+    piece.ejection = {
+      fromX: piece.x, fromY: piece.y,
+      toX: piece.homeX, toY: piece.homeY,
+      elapsed: 0, duration: 0.32,
+    };
+  }
+  return ejected;
+}
+
+function snapPieceToTarget(piece, radius) {
+  if (Math.hypot(piece.x - piece.targetX, piece.y - piece.targetY) > radius) return false;
+  piece.x = piece.targetX;
+  piece.y = piece.targetY;
+  piece.width = piece.targetWidth;
+  piece.height = piece.targetHeight;
+  piece.placed = true;
+  return true;
+}
+
+function pathPassesNearTarget(fromX, fromY, toX, toY, targetX, targetY, radius) {
+  const dx = toX - fromX;
+  const dy = toY - fromY;
+  const lengthSquared = dx * dx + dy * dy;
+  if (lengthSquared === 0) return Math.hypot(fromX - targetX, fromY - targetY) <= radius;
+
+  const progress = Math.max(0, Math.min(1,
+    ((targetX - fromX) * dx + (targetY - fromY) * dy) / lengthSquared,
+  ));
+  return Math.hypot(fromX + dx * progress - targetX, fromY + dy * progress - targetY) <= radius;
+}
+
+
+// ---- src/chapters/ch03_mazeLayout.js ----
+// Ch3 迷宫连线 — 地图配置 & 路径校验
+// 节点数据由标注工具生成
+
+const NODES = [
+  { id: 'start',  x: 225,  y: 268, label: '我的位置',  type: 'start' },
+  { id: 'node_1', x: 375,  y: 278, label: '',           type: 'correct' },
+  { id: 'node_3', x: 574,  y: 173, label: '',           type: 'correct' },
+  { id: 'node_4', x: 693,  y: 203, label: '',           type: 'correct' },
+  { id: 'node_5', x: 688,  y: 293, label: '',           type: 'correct' },
+  { id: 'node_6', x: 698,  y: 358, label: '',           type: 'correct' },
+  { id: 'node_7', x: 758,  y: 387, label: '',           type: 'correct' },
+  { id: 'node_8', x: 888,  y: 358, label: '',           type: 'correct' },
+  { id: 'node_9', x: 893,  y: 243, label: '',           type: 'correct' },
+  { id: 'node_10', x: 1047, y: 293, label: '',          type: 'correct' },
+  { id: 'end',    x: 1062, y: 353, label: '希望小学',    type: 'end' },
+];
+
+// 误导路径节点 — 走这条路线最终到不了终点
+const DECOY_NODES = [
+  { id: 'node_2', x: 370,  y: 353 },
+  { id: 'node_11', x: 265,  y: 358 },
+  { id: 'node_12', x: 255,  y: 482 },
+  { id: 'node_13', x: 325,  y: 487 },
+  { id: 'node_14', x: 449,  y: 447 },
+  { id: 'node_15', x: 539,  y: 497 },
+  { id: 'node_16', x: 643,  y: 562 },
+  { id: 'node_17', x: 793,  y: 542 },
+];
+
+const DEAD_ENDS = [
+  { id: 'dead_1', x: 569, y: 358 },
+  { id: 'dead_2', x: 728, y: 477 },
+  { id: 'dead_3', x: 813, y: 442 },
+  { id: 'dead_4', x: 942, y: 402 },
+  { id: 'dead_5', x: 967, y: 552 },
+  { id: 'dead_6', x: 370, y: 353 },
+];
+
+const CORRECT_PATH = NODES.map(n => n.id);
+
+// 自动从 correctPath 生成 edges
+const EDGES = [];
+for (let i = 0; i < CORRECT_PATH.length - 1; i++) {
+  EDGES.push({ from: CORRECT_PATH[i], to: CORRECT_PATH[i + 1], isCorrect: true });
+}
+
+const MAZE_CONFIG = Object.freeze({
+  nodeRadius: 50,
+  nodes: NODES,
+  deadEnds: DEAD_ENDS,
+  decoys: DECOY_NODES,
+  edges: EDGES,
+  correctPath: CORRECT_PATH,
+});
+
+/**
+ * 根据触摸点序列校验路线
+ * @param {Array<{x:number,y:number}>} points — 玩家触摸点
+ * @returns {{ success: boolean, checkpointIndex: number, hitWrong: boolean }}
+ */
+function validatePath(points) {
+  const cfg = MAZE_CONFIG;
+  let checkpointIndex = 0;
+  let hitWrong = false;
+
+  for (const pt of points) {
+    // 检测死胡同
+    for (const dead of cfg.deadEnds) {
+      if (Math.hypot(pt.x - dead.x, pt.y - dead.y) <= cfg.nodeRadius) {
+        hitWrong = true;
+        break;
+      }
+    }
+    if (hitWrong) break;
+
+    // 检测是否到达下一个正确节点
+    while (checkpointIndex < cfg.correctPath.length - 1) {
+      const nextId = cfg.correctPath[checkpointIndex + 1];
+      const nextNode = cfg.nodes.find(n => n.id === nextId);
+      if (nextNode && Math.hypot(pt.x - nextNode.x, pt.y - nextNode.y) <= cfg.nodeRadius) {
+        checkpointIndex++;
+      } else {
+        break;
+      }
+    }
+  }
+
+  return {
+    success: checkpointIndex >= cfg.correctPath.length - 1 && !hitWrong,
+    checkpointIndex,
+    hitWrong,
+  };
+}
+
+/**
+ * 通过节点 ID 查找节点（含误导节点）
+ */
+function getNode(id) {
+  const node = MAZE_CONFIG.nodes.find(n => n.id === id);
+  if (node) return node;
+  const decoy = MAZE_CONFIG.decoys.find(d => d.id === id);
+  if (decoy) return decoy;
+  return MAZE_CONFIG.deadEnds.find(d => d.id === id);
+}
+
+/**
+ * 获取所有死胡同节点的 id 集合
+ */
+function getDeadEndIds() {
+  return MAZE_CONFIG.deadEnds.map(d => d.id);
+}
+
+/**
+ * 判断屏幕坐标是否在起点附近
+ */
+function hitStart(x, y) {
+  const start = MAZE_CONFIG.nodes.find(n => n.id === 'start');
+  if (!start) return false;
+  return Math.hypot(x - start.x, y - start.y) <= MAZE_CONFIG.nodeRadius;
+}
+
+/**
+ * 判断屏幕坐标是否在终点附近
+ */
+function hitEnd(x, y) {
+  const end = MAZE_CONFIG.nodes.find(n => n.id === 'end');
+  if (!end) return false;
+  return Math.hypot(x - end.x, y - end.y) <= MAZE_CONFIG.nodeRadius;
+}
+
+
+// ---- src/chapters/ch02_puzzle.js ----
+
+
+
+// 离屏 Canvas 预生成灰度版本（替代 ctx.filter）
+function createGrayscaleImage(image) {
+  const canvas = document.createElement('canvas');
+  canvas.width = image.width;
+  canvas.height = image.height;
+  const ctx = canvas.getContext('2d');
+  ctx.drawImage(image, 0, 0);
+  const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+  const data = imageData.data;
+  for (let i = 0; i < data.length; i += 4) {
+    const avg = data[i] * 0.299 + data[i + 1] * 0.587 + data[i + 2] * 0.114;
+    data[i] = data[i + 1] = data[i + 2] = avg;
+  }
+  ctx.putImageData(imageData, 0, 0);
+  return canvas;
+}
+
+class Chapter02 {
+  constructor(game) {
+    this.game = game;
+    const img = game.images.puzzle;
+    this.pieces = createPuzzlePieces(img.width, img.height);
+    this.draggedPiece = null;
+    this.hoveredPiece = null;
+    this.activePointerId = null;
+    this.offset = { x: 0, y: 0 };
+    this.particles = [];
+    this.phase = 'playing';
+    this.phaseTime = 0;
+    this._completed = false;
+    this.dragThreshold = 5;
+    this.hasMoved = false;
+  }
+
+  get isComplete() { return this._completed; }
+  get completeTitle() { return '记忆恢复了一些……'; }
+  get completeMessage() { return '但那抹色彩，终究会慢慢褪去……'; }
+
+  onEnter() {
+    this.game.input.setHandlers({
+      down: point => this.handleDown(point),
+      move: point => this.handleMove(point),
+      up: point => this.handleUp(point),
+      cancel: () => this.handleCancel(),
+      leave: () => { this.hoveredPiece = null; },
+    });
+  }
+
+  onExit() {
+    this.game.input.setHandlers();
+  }
+
+  handleDown(point) {
+    if (this.phase !== 'playing' || this.draggedPiece) return;
+    const piece = getTopmostPieceAt(this.pieces, point.x, point.y);
+    if (!piece) return;
+    this.draggedPiece = piece;
+    this.activePointerId = point.pointerId;
+    this.dragStartX = point.x;
+    this.dragStartY = point.y;
+    this.hasMoved = false;
+    piece.dragging = true;
+    this.offset = { x: point.x - piece.x, y: point.y - piece.y };
+    this.pieces.splice(this.pieces.indexOf(piece), 1);
+    this.pieces.push(piece);
+  }
+
+  handleMove(point) {
+    if (!this.draggedPiece) {
+      this.hoveredPiece = getTopmostPieceAt(this.pieces, point.x, point.y);
+      return;
+    }
+    if (point.pointerId !== this.activePointerId) return;
+
+    if (!this.hasMoved) {
+      const dx = point.x - this.dragStartX;
+      const dy = point.y - this.dragStartY;
+      if (Math.hypot(dx, dy) < this.dragThreshold) return;
+      this.hasMoved = true;
+    }
+
+    const { safeMargin } = DEFAULT_PUZZLE_LAYOUT;
+    const piece = this.draggedPiece;
+    piece.x = Math.max(safeMargin,
+      Math.min(this.game.width - piece.width - safeMargin, point.x - this.offset.x));
+    piece.y = Math.max(safeMargin,
+      Math.min(this.game.height - piece.height - safeMargin, point.y - this.offset.y));
+  }
+
+  handleUp(point) {
+    if (this.draggedPiece && point.pointerId === this.activePointerId) {
+      const piece = this.draggedPiece;
+      piece.dragging = false;
+      this.draggedPiece = null;
+      this.activePointerId = null;
+
+      if (this.hasMoved && snapPieceToTarget(piece, DEFAULT_PUZZLE_LAYOUT.snapRadius)) {
+        this.finishPlacement(piece);
+      }
+      this.hasMoved = false;
+    }
+  }
+
+  handleCancel() {
+    if (this.draggedPiece) {
+      this.draggedPiece.dragging = false;
+      this.draggedPiece = null;
+      this.activePointerId = null;
+      this.hoveredPiece = null;
+      this.hasMoved = false;
+    }
+  }
+
+  finishPlacement(piece) {
+    this.draggedPiece = null;
+    this.activePointerId = null;
+    this.hoveredPiece = null;
+    try { navigator.vibrate?.(15); } catch {}
+    this.spawnParticles(piece.x + piece.width / 2, piece.y + piece.height / 2);
+    for (const ejectedPiece of ejectPiecesBlockingTarget(this.pieces, piece)) {
+      this.spawnParticles(ejectedPiece.x + ejectedPiece.width / 2, ejectedPiece.y + ejectedPiece.height / 2, '#f1b09a', 8);
+    }
+    if (this.pieces.every(c => c.placed)) {
+      this.phase = 'completeHold';
+      this.phaseTime = 0;
+    }
+  }
+
+  spawnParticles(x, y, color = '#ffd37a', count = 14) {
+    for (let i = 0; i < count; i++) {
+      const angle = Math.random() * Math.PI * 2;
+      const speed = 35 + Math.random() * 65;
+      this.particles.push({ x, y, vx: Math.cos(angle) * speed, vy: Math.sin(angle) * speed, life: 0.45 + Math.random() * 0.25, color });
+    }
+  }
+
+  update(dt) {
+    for (const piece of this.pieces) {
+      const target = (piece === this.draggedPiece || piece === this.hoveredPiece) ? 1 : 0;
+      piece.highlight += (target - piece.highlight) * Math.min(1, dt * 12);
+    }
+    for (const piece of this.pieces) {
+      if (!piece.ejection) continue;
+      piece.ejection.elapsed += dt;
+      const t = Math.min(1, piece.ejection.elapsed / piece.ejection.duration);
+      const c1 = 1.70158;
+      const c3 = c1 + 1;
+      const eased = 1 + c3 * Math.pow(t - 1, 3) + c1 * Math.pow(t - 1, 2);
+      piece.x = piece.ejection.fromX + (piece.ejection.toX - piece.ejection.fromX) * eased;
+      piece.y = piece.ejection.fromY + (piece.ejection.toY - piece.ejection.fromY) * eased;
+      if (t >= 1) {
+        piece.x = piece.ejection.toX;
+        piece.y = piece.ejection.toY;
+        piece.ejection = null;
+        piece.ejecting = false;
+      }
+    }
+    this.particles = this.particles.filter(p => {
+      p.life -= dt;
+      p.x += p.vx * dt;
+      p.y += p.vy * dt;
+      p.vy += 30 * dt;
+      return p.life > 0;
+    });
+    if (this.phase === 'completeHold') {
+      this.phaseTime += dt;
+      if (this.phaseTime >= 3) {
+        this.phase = 'fadeMemory';
+        this.phaseTime = 0;
+      }
+    } else if (this.phase === 'fadeMemory') {
+      this.phaseTime += dt;
+      if (this.phaseTime >= 2 && !this._completed) {
+        this._completed = true;
+        this.game.progress.markChapterComplete(2, 15);
+      }
+    }
+  }
+
+  render(ctx) {
+    const { width, height } = this.game;
+    ctx.save();
+    ctx.fillStyle = '#100c09';
+    ctx.fillRect(0, 0, width, height);
+    const glow = ctx.createRadialGradient(width / 2, height / 2, 30, width / 2, height / 2, 650);
+    glow.addColorStop(0, 'rgba(139, 91, 43, 0.55)');
+    glow.addColorStop(1, 'rgba(16, 12, 9, 0)');
+    ctx.fillStyle = glow;
+    ctx.fillRect(0, 0, width, height);
+    ctx.restore();
+
+    this.drawGrid(ctx);
+    const fading = this.phase === 'fadeMemory' ? Math.min(1, this.phaseTime / 2) : 0;
+    for (const piece of this.pieces) {
+      if (piece.placed) {
+        this.drawPiece(ctx, piece, 1 - fading * 0.7);
+      } else {
+        ctx.save();
+        if (piece.dragging || piece.highlight > 0.05) {
+          ctx.shadowColor = piece.dragging ? 'rgba(0, 0, 0, 0.65)' : 'rgba(255, 211, 122, 0.75)';
+          ctx.shadowBlur = piece.dragging ? 9 : 18 * piece.highlight;
+          ctx.shadowOffsetX = piece.dragging ? 4 : 0;
+          ctx.shadowOffsetY = piece.dragging ? 5 : 0;
+        }
+        this.drawPiece(ctx, piece, piece.dragging ? 0.7 : 0.25 + piece.highlight * 0.55);
+        ctx.restore();
+      }
+    }
+    this.drawParticles(ctx);
+
+    const panel = DEFAULT_PUZZLE_LAYOUT.panel;
+    if (this.phase === 'completeHold') drawPrompt(ctx, '记忆恢复了一些……', width / 2, 55, 0.6);
+    else if (this.phase === 'fadeMemory') drawPrompt(ctx, '但那抹色彩，终究会慢慢褪去……', width / 2, 55, 0.35);
+    else drawPrompt(ctx, '将拼图碎片拖到正确的位置', width / 2, panel.y + panel.height + 37, 0);
+  }
+
+  drawPiece(ctx, piece, saturation) {
+    const image = this.game.images.puzzle;
+    // 使用离屏 Canvas 预生成的灰度图来替代 ctx.filter
+    if (saturation < 0.5) {
+      if (!piece._grayCache) {
+        // 首次渲染时创建该碎片的灰度版本
+        const grayCanvas = document.createElement('canvas');
+        grayCanvas.width = piece.sourceW;
+        grayCanvas.height = piece.sourceH;
+        const gctx = grayCanvas.getContext('2d');
+        gctx.drawImage(image, piece.sourceX, piece.sourceY, piece.sourceW, piece.sourceH, 0, 0, piece.sourceW, piece.sourceH);
+        const imageData = gctx.getImageData(0, 0, grayCanvas.width, grayCanvas.height);
+        const data = imageData.data;
+        for (let i = 0; i < data.length; i += 4) {
+          const avg = data[i] * 0.299 + data[i + 1] * 0.587 + data[i + 2] * 0.114;
+          data[i] = data[i + 1] = data[i + 2] = avg;
+        }
+        gctx.putImageData(imageData, 0, 0);
+        piece._grayCache = grayCanvas;
+      }
+      // 混合：灰度 → 彩色
+      ctx.globalAlpha = saturation * 2; // 0.25 → 0.5, 0.5 → 1.0
+      ctx.drawImage(image, piece.sourceX, piece.sourceY, piece.sourceW, piece.sourceH, piece.x, piece.y, piece.width, piece.height);
+      ctx.globalAlpha = 1;
+      if (saturation * 2 < 1) {
+        ctx.globalAlpha = 1 - saturation * 2;
+        ctx.drawImage(piece._grayCache, 0, 0, piece.sourceW, piece.sourceH, piece.x, piece.y, piece.width, piece.height);
+        ctx.globalAlpha = 1;
+      }
+    } else {
+      ctx.drawImage(image, piece.sourceX, piece.sourceY, piece.sourceW, piece.sourceH, piece.x, piece.y, piece.width, piece.height);
+    }
+  }
+
+  drawGrid(ctx) {
+    const { panel } = DEFAULT_PUZZLE_LAYOUT;
+    ctx.save();
+    roundedRect(ctx, panel.x - 12, panel.y - 12, panel.width + 24, panel.height + 24, 16);
+    ctx.fillStyle = 'rgba(255, 242, 210, 0.07)';
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(255, 244, 219, 0.55)';
+    ctx.setLineDash([10, 9]);
+    ctx.lineWidth = 2;
+    for (let c = 0; c <= 3; c++) {
+      const x = panel.x + c * panel.width / 3;
+      ctx.beginPath(); ctx.moveTo(x, panel.y); ctx.lineTo(x, panel.y + panel.height); ctx.stroke();
+    }
+    for (let r = 0; r <= 3; r++) {
+      const y = panel.y + r * panel.height / 3;
+      ctx.beginPath(); ctx.moveTo(panel.x, y); ctx.lineTo(panel.x + panel.width, y); ctx.stroke();
+    }
+    ctx.restore();
+  }
+
+  drawParticles(ctx) {
+    ctx.save();
+    for (const p of this.particles) {
+      ctx.globalAlpha = Math.min(1, p.life * 2);
+      ctx.fillStyle = p.color;
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, 3, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.restore();
+  }
+}
+
+
+// ---- src/chapters/ch03_maze.js ----
+
+
+
+class Chapter03 {
+  constructor(game) {
+    this.game = game;
+    this.points = [];
+    this.phase = 'idle';
+    this.phaseTime = 0;
+    this._completed = false;
+    this.hoveredNode = null;
+    this.debug = false;
+    this.resetBtn = { x: 880, y: 620, w: 380, h: 80 };
+  }
+
+  get isComplete() { return this._completed; }
+  get completeTitle() { return '路线找到了'; }
+  get completeMessage() { return '记忆的碎片拼合在一起……'; }
+
+  onEnter() {
+    this.game.input.setHandlers({
+      down: point => this.handleDown(point),
+      move: point => this.handleMove(point),
+      up: point => this.handleUp(point),
+      cancel: () => this.handleCancel(),
+    });
+  }
+
+  onExit() {
+    this.game.input.setHandlers();
+  }
+
+  handleDown(point) {
+    if (this.hitResetBtn(point.x, point.y)) {
+      this.resetRoute();
+      return;
+    }
+    if (this.phase !== 'idle') return;
+    if (!hitStart(point.x, point.y)) return;
+    this.points = [point];
+    this.phase = 'drawing';
+  }
+
+  handleMove(point) {
+    this.updateHover(point);
+    if (this.phase !== 'drawing') return;
+    this.points.push(point);
+    const result = validatePath(this.points);
+    if (result.hitWrong) {
+      this.phase = 'wrong';
+      this.phaseTime = 0;
+      try { navigator.vibrate?.(30); } catch {}
+    }
+  }
+
+  handleUp(point) {
+    if (this.phase === 'idle') return;
+    if (this.phase !== 'drawing') return;
+    if (this.points.length < 3) {
+      this.points = [];
+      this.phase = 'idle';
+      return;
+    }
+    this.points.push(point);
+    const result = validatePath(this.points);
+    if (result.success) {
+      this.phase = 'success';
+      this.phaseTime = 0;
+      try { navigator.vibrate?.(15); } catch {}
+    } else if (!result.hitWrong) {
+      this.phase = 'wrong';
+      this.phaseTime = 0;
+    }
+  }
+
+  handleCancel() {
+    this.points = [];
+    this.phase = 'idle';
+    this.phaseTime = 0;
+  }
+
+  resetRoute() {
+    this.points = [];
+    this.phase = 'idle';
+    this.phaseTime = 0;
+    try { navigator.vibrate?.(10); } catch {}
+  }
+
+  hitResetBtn(x, y) {
+    const b = this.resetBtn;
+    return x >= b.x && x <= b.x + b.w && y >= b.y && y <= b.y + b.h;
+  }
+
+  updateHover(point) {
+    if (this.phase !== 'drawing' && this.phase !== 'idle') {
+      this.hoveredNode = null;
+      return;
+    }
+    this.hoveredNode = null;
+    for (const node of MAZE_CONFIG.nodes) {
+      if (Math.hypot(point.x - node.x, point.y - node.y) <= MAZE_CONFIG.nodeRadius) {
+        this.hoveredNode = node.id;
+        return;
+      }
+    }
+    for (const decoy of (MAZE_CONFIG.decoys || [])) {
+      if (Math.hypot(point.x - decoy.x, point.y - decoy.y) <= MAZE_CONFIG.nodeRadius) {
+        this.hoveredNode = decoy.id;
+        return;
+      }
+    }
+  }
+
+  update(dt) {
+    if (this.phase === 'wrong') {
+      this.phaseTime += dt;
+      if (this.phaseTime >= 0.8) {
+        this.points = [];
+        this.phase = 'idle';
+        this.phaseTime = 0;
+      }
+    } else if (this.phase === 'success') {
+      this.phaseTime += dt;
+      if (this.phaseTime >= 1.8 && !this._completed) {
+        this._completed = true;
+        this.game.progress.markChapterComplete(3, 22);
+      }
+    }
+  }
+
+  render(ctx) {
+    const { width, height } = this.game;
+
+    ctx.fillStyle = '#100c09';
+    ctx.fillRect(0, 0, width, height);
+
+    if (this.game.images.mazeMap) {
+      drawImageCover(ctx, this.game.images.mazeMap, width, height);
+    }
+
+    this.drawHoverNode(ctx);
+    this.drawPlayerLine(ctx);
+
+    if (this.phase === 'wrong') {
+      const flash = Math.sin(this.phaseTime * 14) * 0.5 + 0.5;
+      ctx.fillStyle = `rgba(180, 40, 30, ${flash * 0.25})`;
+      ctx.fillRect(0, 0, width, height);
+
+      const lastPt = this.points[this.points.length - 1];
+      if (lastPt) {
+        ctx.beginPath();
+        ctx.arc(lastPt.x, lastPt.y, 24, 0, Math.PI * 2);
+        ctx.fillStyle = `rgba(220, 50, 40, ${flash * 0.7})`;
+        ctx.fill();
+      }
+    }
+
+    if (this.phase === 'idle') {
+      drawPrompt(ctx, '从起点画一条路线到希望小学', width / 2, height - 45, 0);
+    } else if (this.phase === 'wrong') {
+      drawPrompt(ctx, '再试试吧', width / 2, height - 45, 0.4);
+    } else if (this.phase === 'success') {
+      drawPrompt(ctx, '找到了！要赶紧去接她……', width / 2, height - 45, 0.4);
+    }
+  }
+
+  drawHoverNode(ctx) {
+    if (!this.hoveredNode || this.phase === 'success' || this._completed) return;
+
+    let node = MAZE_CONFIG.nodes.find(n => n.id === this.hoveredNode);
+    let isDecoy = false;
+    if (!node) {
+      node = MAZE_CONFIG.decoys.find(d => d.id === this.hoveredNode);
+      isDecoy = !!node;
+    }
+    if (!node) return;
+
+    const isStart = node.type === 'start';
+    const isEnd = node.type === 'end';
+
+    ctx.save();
+    ctx.shadowColor = isEnd ? '#e05545' : '#f0c040';
+    ctx.shadowBlur = 22;
+
+    ctx.beginPath();
+    ctx.arc(node.x, node.y, 20, 0, Math.PI * 2);
+    ctx.fillStyle = isStart ? 'rgba(76,175,80,0.6)'
+      : isEnd ? 'rgba(244,67,54,0.55)'
+      : 'rgba(240,192,64,0.55)';
+    ctx.fill();
+    ctx.restore();
+
+    const label = isStart ? '我的位置' : isEnd ? '希望小学' : '';
+    if (label) {
+      ctx.save();
+      ctx.font = 'bold 14px system-ui, "PingFang SC", sans-serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'bottom';
+      const tw = ctx.measureText(label).width;
+      const pad = 8;
+      const tx = node.x;
+      const ty = node.y - 26;
+      roundedRect(ctx, tx - tw / 2 - pad, ty - 24, tw + pad * 2, 28, 6);
+      ctx.fillStyle = 'rgba(0,0,0,0.75)';
+      ctx.fill();
+      ctx.fillStyle = '#fff';
+      ctx.fillText(label, tx, ty - 2);
+      ctx.restore();
+    }
+  }
+
+  drawPlayerLine(ctx) {
+    if (this.points.length < 2) return;
+
+    const isWrong = this.phase === 'wrong';
+    const alpha = isWrong ? Math.max(0, 1 - this.phaseTime / 0.8) : 1;
+
+    ctx.save();
+    ctx.globalAlpha = alpha;
+
+    ctx.shadowColor = isWrong ? '#c03020' : '#e8a840';
+    ctx.shadowBlur = isWrong ? 10 : 14;
+
+    ctx.beginPath();
+    ctx.moveTo(this.points[0].x, this.points[0].y);
+    for (let i = 1; i < this.points.length; i++) {
+      ctx.lineTo(this.points[i].x, this.points[i].y);
+    }
+
+    ctx.strokeStyle = isWrong ? '#d04030' : '#f0b848';
+    ctx.lineWidth = isWrong ? 5 : 6;
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+    ctx.stroke();
+
+    ctx.shadowBlur = 0;
+    ctx.strokeStyle = isWrong ? '#e06050' : '#ffd070';
+    ctx.lineWidth = isWrong ? 3 : 4;
+    ctx.stroke();
+
+    ctx.restore();
+  }
+}
+
+
+// ---- src/chapters/ch08_sign.js ----
+// Ch8 签字——从独立 app 重写为 Chapter 接口
+
+function avg(arr) { return arr.reduce((s, v) => v + s, 0) / arr.length; }
+
+function bbox(pts) {
+  let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+  for (const p of pts) {
+    if (p.x < x0) x0 = p.x;
+    if (p.y < y0) y0 = p.y;
+    if (p.x > x1) x1 = p.x;
+    if (p.y > y1) y1 = p.y;
+  }
+  return { x: x0, y: y0, w: x1 - x0, h: y1 - y0 };
+}
+
+// 笔画分类
+function classifyStroke(pts) {
+  if (pts.length < 3) return 'dot';
+  const bb = bbox(pts);
+  const diag = Math.hypot(bb.w, bb.h);
+  if (diag < 18) return 'dot';
+
+  const dx = pts[pts.length - 1].x - pts[0].x;
+  const dy = pts[pts.length - 1].y - pts[0].y;
+  const len = Math.hypot(dx, dy);
+  if (len < 12) return 'dot';
+
+  let dirChanges = 0, prevDir = null;
+  const step = Math.max(1, Math.floor(pts.length / 8));
+  for (let i = step; i < pts.length - step; i += step) {
+    const cd = { x: pts[i].x - pts[i - step].x, y: pts[i].y - pts[i - step].y };
+    const nd = Math.hypot(cd.x, cd.y);
+    if (nd < 4) continue;
+    const deg = Math.atan2(cd.y, cd.x) * 57.3;
+    if (prevDir !== null && Math.abs(deg - prevDir) > 40) dirChanges++;
+    prevDir = deg;
+  }
+  if (dirChanges >= 2) return 'fold';
+
+  let angle = Math.atan2(dy, dx) * 57.3;
+  if (angle < 0) angle += 180;
+  const ratio = bb.w / (bb.h || 1);
+
+  if (ratio > 2.2) return 'horizontal';
+  if (ratio < 0.45) return 'vertical';
+  if (angle < 30 || angle > 150) return 'horizontal';
+  if (angle > 65 && angle < 115) return 'vertical';
+  if (angle >= 30 && angle <= 65) return 'na';
+  if (angle >= 115 && angle <= 150) return 'pie';
+  return 'horizontal';
+}
+
+// 畸变规则：横↔竖、撇↔捺
+function deformStroke(pts, type) {
+  if (pts.length < 2) return { deformed: [...pts], type };
+  const cx = avg(pts.map(p => p.x)), cy = avg(pts.map(p => p.y));
+  switch (type) {
+    case 'horizontal':
+    case 'vertical':
+      return {
+        type: type === 'horizontal' ? 'vertical' : 'horizontal',
+        deformed: pts.map(p => ({ x: cx + (p.y - cy), y: cy - (p.x - cx) })),
+      };
+    case 'pie':
+      return { type: 'na', deformed: pts.map(p => ({ x: cx - (p.x - cx), y: p.y })) };
+    case 'na':
+      return { type: 'pie', deformed: pts.map(p => ({ x: cx - (p.x - cx), y: p.y })) };
+    default:
+      return { deformed: [...pts], type };
+  }
+}
+
+class Chapter08 {
+  constructor(game) {
+    this.game = game;
+    this.DW = 1280; this.DH = 720;
+    this.strokes = [];
+    this.cur = [];
+    this.wDown = false;
+    this.wPid = null;
+    this.attempts = 0;
+    this.passed = false;
+    this.hintShown = false;
+    this.elapsed = 0;
+    this.totalDT = 0;
+
+    // 纸张纹理
+    this.texture = [];
+    for (let i = 0; i < 120; i++) {
+      this.texture.push({ x: Math.random() * this.DW, y: Math.random() * this.DH, r: 0.3 + Math.random() * 2.8, a: 0.015 + Math.random() * 0.04 });
+    }
+
+    this.MAX_ATTEMPTS = 5;
+    this.PASS_SCORE = 80;
+    this.TIMEOUT_SEC = 10;
+    this._completed = false;
+
+    // 缩放参数
+    const imgW = 1448, imgH = 1086;
+    const sc = Math.max(this.DW / imgW, this.DH / imgH);
+    const cropIx = 910, cropIy = 772, cropIw = 510, cropIh = 118;
+    this.cropCx = cropIx * sc; this.cropCy = cropIy * sc + (this.DH - imgH * sc) / 2;
+    this.cropW = cropIw * sc; this.cropH = cropIh * sc;
+    this.zoomScale = Math.min(this.DW / this.cropW, this.DH / this.cropH) * 0.96;
+    this.targetCx = 1240 * sc; this.targetCy = 806 * sc + (this.DH - imgH * sc) / 2;
+
+    // 阶段
+    this.phase = 'sign'; // sign → zoom → writing
+    this.phaseTime = 0;
+    this.zoomT = 0;
+    this.zoomF = 0;
+    this.waitT = 0;
+    this.timeoutActive = false;
+    this.timeoutFired = false;
+  }
+
+  get isComplete() { return this._completed; }
+  get completeTitle() { return '辨认成功'; }
+  get completeMessage() { return '李向阳'; }
+
+  onEnter() {
+    this.game.input.setHandlers({
+      down: p => this.handleDown(p),
+      move: p => this.handleMove(p),
+      up: p => this.handleUp(p),
+      cancel: () => this.handleCancel(),
+    });
+    this.phase = 'sign';
+    this.phaseTime = 0;
+  }
+
+  onExit() {
+    this.game.input.setHandlers();
+    if (this.timeoutTimer) clearInterval(this.timeoutTimer);
+  }
+
+  handleDown(point) {
+    if (this.phase === 'writing' && !this.passed) {
+      this.wDown = true;
+      this.wPid = point.pointerId;
+      this.cur = [point];
+      return;
+    }
+    // 检查弹层按钮（超时/提示/通过）
+    this.checkButtonClick(point);
+  }
+
+  handleMove(point) {
+    if (this.phase === 'writing' && this.wDown && point.pointerId === this.wPid) {
+      const last = this.cur[this.cur.length - 1];
+      if (Math.hypot(point.x - last.x, point.y - last.y) < 1.5) return;
+      this.cur.push(point);
+    }
+  }
+
+  handleUp(point) {
+    if (this.phase !== 'writing' || !this.wDown) return;
+    this.wDown = false;
+    this.wPid = null;
+    if (this.cur.length >= 4) {
+      const type = classifyStroke(this.cur);
+      const { deformed } = deformStroke(this.cur, type);
+      this.strokes.push({ raw: [...this.cur], deformed, type });
+    }
+    this.cur = [];
+  }
+
+  handleCancel() {
+    this.wDown = false;
+    this.wPid = null;
+    this.cur = [];
+  }
+
+  checkButtonClick(point) {
+    // "清除"按钮
+    const cw = 90, ch = 36, cx = this.DW - cw - 20 - 124, cy = this.DH - ch - 16;
+    if (point.x >= cx && point.x <= cx + cw && point.y >= cy && point.y <= cy + ch) {
+      this.strokes = [];
+      this.cur = [];
+      return;
+    }
+    // "提交"按钮
+    const bw = 110, bh = 40, bx = this.DW - bw - 20, by = this.DH - bh - 16;
+    if (point.x >= bx && point.x <= bx + bw && point.y >= by && point.y <= by + bh) {
+      this.submit();
+      return;
+    }
+    // 弹层按钮
+    if (this.timeoutFired) {
+      this.timeoutFired = false;
+      this.elapsed = 0;
+      this.totalDT = 0;
+      try { navigator.vibrate?.(10); } catch {}
+      return;
+    }
+    if (this.showHint) {
+      this.showHint = false;
+      try { navigator.vibrate?.(10); } catch {}
+      return;
+    }
+    if (this._completed) {
+      this.resetAll();
+      return;
+    }
+  }
+
+  submit() {
+    if (this.passed || this.strokes.length < 5) return;
+    if (this.matchSignature()) {
+      this.passed = true;
+      this._completed = true;
+      this.game.progress.markChapterComplete(8, 72);
+      try { navigator.vibrate?.(15); } catch {}
+      return;
+    }
+    this.attempts++;
+    if (this.attempts >= this.MAX_ATTEMPTS && !this.hintShown) {
+      this.hintShown = true;
+      this.showHint = true;
+    }
+  }
+
+  matchSignature() {
+    const all = this.strokes.map(s => s.raw);
+    if (all.length < 6) return false;
+    const zones = [[], []];
+    for (const pts of all) {
+      zones[Math.min(1, Math.floor((avg(pts.map(p => p.x)) / this.DW) * 2))].push(pts);
+    }
+    if (zones[0].length < 3 || zones[1].length < 3) return false;
+    let sc = 0;
+    let z0h = false, z0v = false, z0f = false;
+    for (const pts of zones[0]) {
+      const t = classifyStroke(pts);
+      if (t === 'horizontal') z0h = true;
+      if (t === 'vertical') z0v = true;
+      if (t === 'fold') z0f = true;
+    }
+    sc += Math.min(20, zones[0].length * 4);
+    if (z0h && z0v && z0f) sc += 18;
+    else if (z0h && z0v) sc += 12;
+
+    let z1h = false, z1v = false;
+    for (const pts of zones[1]) {
+      const t = classifyStroke(pts);
+      if (t === 'horizontal') z1h = true;
+      if (t === 'vertical') z1v = true;
+    }
+    sc += Math.min(20, zones[1].length * 4);
+    if (z1h && z1v) sc += 18;
+    else if (z1h || z1v) sc += 8;
+    if (z0h && z0v && z1h && z1v) sc += 10;
+    sc += Math.min(8, Math.max(0, all.length - 6));
+    return sc >= this.PASS_SCORE;
+  }
+
+  resetAll() {
+    this.strokes = [];
+    this.cur = [];
+    this.attempts = 0;
+    this.passed = false;
+    this.hintShown = false;
+    this.elapsed = 0;
+    this.totalDT = 0;
+    this.timeoutActive = false;
+    this.timeoutFired = false;
+    this.showHint = false;
+    this._completed = false;
+    this.phase = 'sign';
+    this.phaseTime = 0;
+    this.zoomT = 0;
+    this.zoomF = 0;
+    this.waitT = 0;
+  }
+
+  update(dt) {
+    this.totalDT += dt;
+
+    // phase transitions
+    if (this.phase === 'sign') {
+      this.phaseTime += dt;
+      if (this.phaseTime >= 2.5) {
+        this.phase = 'zoom';
+        this.phaseTime = 0;
+      }
+    } else if (this.phase === 'zoom') {
+      this.phaseTime += dt;
+      const DUR = 1.6;
+      const raw = Math.min(1, this.phaseTime / DUR);
+      this.zoomT = raw < 0.5 ? 4 * raw * raw * raw : 1 - Math.pow(-2 * raw + 2, 3) / 2;
+      this.zoomF = raw > 0.6 ? Math.min(1, 1 - Math.pow(1 - (raw - 0.6) / 0.4, 2)) : 0;
+      if (raw >= 1) {
+        this.phase = 'writing';
+        this.elapsed = 0;
+        this.timeoutActive = true;
+        this.timeoutFired = false;
+      }
+    } else if (this.phase === 'writing' && this.timeoutActive && !this.passed) {
+      this.totalDT += dt;
+      // 用 totalDT 的方式计时（简化：每10次 update 约1秒）
+      // 改用 dt 累加
+      const prevElapsed = this.elapsed;
+      this.elapsed += dt;
+      const newSec = Math.floor(this.elapsed);
+      const prevSec = Math.floor(prevElapsed);
+      if (this.elapsed >= this.TIMEOUT_SEC && !this.timeoutFired) {
+        this.timeoutFired = true;
+      }
+    }
+  }
+
+  render(ctx) {
+    ctx.clearRect(0, 0, this.DW, this.DH);
+
+    if (this.phase === 'sign') {
+      this.renderSign(ctx);
+    } else if (this.phase === 'zoom') {
+      this.renderZoom(ctx);
+    } else {
+      this.renderPaper(ctx);
+      this.renderWriting(ctx);
+
+      // 按钮
+      this.drawButton(ctx, this.DW - 90 - 20 - 124, this.DH - 36 - 16, 90, 36, '清除', '#b89a72');
+      this.drawButton(ctx, this.DW - 110 - 20, this.DH - 40 - 16, 110, 40, '提 交', '#f5e6c8', '#4d3420');
+    }
+
+    // 弹层
+    if (this.timeoutFired) this.renderOverlay(ctx, '时间过了许久', '连笔写——手记得的，疾病夺不走', '再试试');
+    if (this.showHint) this.renderOverlay(ctx, '笔迹畸变规则', '横↔竖、撇↔捺，试试连笔写', '明白了');
+    if (this._completed) this.renderOverlay(ctx, '辨认成功', '——\n李向阳', '再写一次', true);
+  }
+
+  renderSign(ctx) {
+    const img = this.game.images.sign;
+    if (!img) return;
+    const iw = 1448, ih = 1086;
+    const sc = Math.max(this.DW / iw, this.DH / ih);
+    const ox = (this.DW - iw * sc) / 2, oy = (this.DH - ih * sc) / 2;
+    ctx.drawImage(img, ox, oy, iw * sc, ih * sc);
+  }
+
+  renderZoom(ctx) {
+    const img = this.game.images.sign;
+    if (!img) return;
+    const iw = 1448, ih = 1086;
+    const sc = Math.max(this.DW / iw, this.DH / ih);
+    const t = this.zoomT;
+    const s = 1 + (this.zoomScale - 1) * t;
+    const camX = this.DW / 2 + (this.targetCx - this.DW / 2) * t;
+    const camY = this.DH / 2 + (this.targetCy - this.DH / 2) * t;
+    let tx = this.DW / 2 - camX * s, ty = this.DH / 2 - camY * s;
+
+    ctx.save();
+    ctx.translate(tx, ty);
+    ctx.scale(s, s);
+    const ox = (this.DW - iw * sc) / 2, oy = (this.DH - ih * sc) / 2;
+    ctx.drawImage(img, ox, oy, iw * sc, ih * sc);
+    ctx.restore();
+  }
+
+  renderPaper(ctx) {
+    const g = ctx.createLinearGradient(0, 0, this.DW * 0.4, this.DH);
+    g.addColorStop(0, '#fcf5e6'); g.addColorStop(0.4, '#f7ecd0');
+    g.addColorStop(0.7, '#f2e2bc'); g.addColorStop(1, '#e8d4a0');
+    ctx.fillStyle = g;
+    ctx.fillRect(0, 0, this.DW, this.DH);
+
+    for (const d of this.texture) {
+      ctx.fillStyle = `rgba(139,105,20,${d.a})`;
+      ctx.beginPath(); ctx.arc(d.x, d.y, d.r, 0, Math.PI * 2); ctx.fill();
+    }
+  }
+
+  renderWriting(ctx) {
+    for (const s of this.strokes) this.drawInk(ctx, s.deformed, false);
+    if (this.cur.length >= 2) this.drawInk(ctx, this.cur, true);
+  }
+
+  drawInk(ctx, pts, ghost) {
+    if (pts.length < 2) return;
+    ctx.save();
+    ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+    ctx.beginPath(); ctx.moveTo(pts[0].x, pts[0].y);
+    if (pts.length === 2) {
+      ctx.lineTo(pts[1].x, pts[1].y);
+    } else {
+      for (let i = 1; i < pts.length - 1; i++) {
+        const mid = { x: (pts[i].x + pts[i + 1].x) / 2, y: (pts[i].y + pts[i + 1].y) / 2 };
+        ctx.quadraticCurveTo(pts[i].x, pts[i].y, mid.x, mid.y);
+      }
+      ctx.lineTo(pts[pts.length - 1].x, pts[pts.length - 1].y);
+    }
+    ctx.strokeStyle = ghost ? 'rgba(30,16,8,0.18)' : '#1a0e06';
+    ctx.lineWidth = ghost ? 2 : 2.6;
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  drawButton(ctx, x, y, w, h, text, bgColor, textColor) {
+    ctx.save();
+    const r = 8;
+    ctx.beginPath();
+    ctx.moveTo(x + r, y);
+    ctx.lineTo(x + w - r, y);
+    ctx.quadraticCurveTo(x + w, y, x + w, y + r);
+    ctx.lineTo(x + w, y + h - r);
+    ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+    ctx.lineTo(x + r, y + h);
+    ctx.quadraticCurveTo(x, y + h, x, y + h - r);
+    ctx.lineTo(x, y + r);
+    ctx.quadraticCurveTo(x, y, x + r, y);
+    ctx.closePath();
+    ctx.fillStyle = bgColor;
+    ctx.fill();
+    ctx.fillStyle = textColor || '#1f1409';
+    ctx.font = '600 16px "PingFang SC", system-ui, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(text, x + w / 2, y + h / 2);
+    ctx.restore();
+  }
+
+  renderOverlay(ctx, title, message, btnText, isPass) {
+    ctx.save();
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.6)';
+    ctx.fillRect(0, 0, this.DW, this.DH);
+
+    const cardW = 380, cardH = 280;
+    const cx = (this.DW - cardW) / 2, cy = (this.DH - cardH) / 2;
+
+    ctx.beginPath();
+    const r = 16;
+    ctx.moveTo(cx + r, cy);
+    ctx.lineTo(cx + cardW - r, cy);
+    ctx.quadraticCurveTo(cx + cardW, cy, cx + cardW, cy + r);
+    ctx.lineTo(cx + cardW, cy + cardH - r);
+    ctx.quadraticCurveTo(cx + cardW, cy + cardH, cx + cardW - r, cy + cardH);
+    ctx.lineTo(cx + r, cy + cardH);
+    ctx.quadraticCurveTo(cx, cy + cardH, cx, cy + cardH - r);
+    ctx.lineTo(cx, cy + r);
+    ctx.quadraticCurveTo(cx, cy, cx + r, cy);
+    ctx.closePath();
+
+    const grad = ctx.createLinearGradient(cx, cy, cx, cy + cardH);
+    grad.addColorStop(0, '#fcf5e6');
+    grad.addColorStop(1, '#f0deb4');
+    ctx.fillStyle = grad;
+    ctx.fill();
+
+    ctx.fillStyle = isPass ? '#2d6e2d' : '#2a1a0c';
+    ctx.font = isPass ? 'bold 24px "PingFang SC", system-ui, sans-serif' : 'bold 22px "PingFang SC", system-ui, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(title, this.DW / 2, cy + 55);
+
+    ctx.fillStyle = '#4d3420';
+    ctx.font = '17px "PingFang SC", system-ui, sans-serif';
+    const lines = message.split('\n');
+    lines.forEach((line, i) => {
+      ctx.fillText(line, this.DW / 2, cy + 110 + i * 28);
+    });
+
+    // 按钮
+    const btnW = 180, btnH = 44, bx = (this.DW - btnW) / 2, by = cy + cardH - 50 - btnH / 2;
+    ctx.beginPath();
+    const br = 8;
+    ctx.moveTo(bx + br, by - btnH / 2);
+    ctx.lineTo(bx + btnW - br, by - btnH / 2);
+    ctx.quadraticCurveTo(bx + btnW, by - btnH / 2, bx + btnW, by - btnH / 2 + br);
+    ctx.lineTo(bx + btnW, by + btnH / 2 - br);
+    ctx.quadraticCurveTo(bx + btnW, by + btnH / 2, bx + btnW - br, by + btnH / 2);
+    ctx.lineTo(bx + br, by + btnH / 2);
+    ctx.quadraticCurveTo(bx, by + btnH / 2, bx, by + btnH / 2 - br);
+    ctx.lineTo(bx, by - btnH / 2 + br);
+    ctx.quadraticCurveTo(bx, by - btnH / 2, bx + br, by - btnH / 2);
+    ctx.closePath();
+    ctx.fillStyle = '#4d3420';
+    ctx.fill();
+    ctx.fillStyle = '#fcf5e6';
+    ctx.font = '600 16px "PingFang SC", system-ui, sans-serif';
+    ctx.fillText(btnText, bx + btnW / 2, by);
+
+    ctx.restore();
+  }
+}
+
+
+// ---- src/main_new.js ----
+// 《昨日重现》入口
+
+
+
+
+
+
+
+
+
+
+
+const DESIGN_W = 1280;
+const DESIGN_H = 720;
+const canvas = document.getElementById('gameCanvas');
+const ctx = canvas.getContext('2d');
+
+let scale = 1;
+let offsetX = 0;
+let offsetY = 0;
+let dpr = 1;
+
+function resizeCanvas() {
+  dpr = window.devicePixelRatio || 1;
+  const { innerWidth: w, innerHeight: h } = window;
+
+  scale = Math.min(w / DESIGN_W, h / DESIGN_H);
+  const displayW = DESIGN_W * scale;
+  const displayH = DESIGN_H * scale;
+  offsetX = (w - displayW) / 2;
+  offsetY = (h - displayH) / 2;
+
+  canvas.width = Math.round(DESIGN_W * dpr);
+  canvas.height = Math.round(DESIGN_H * dpr);
+
+  canvas.style.width = displayW + 'px';
+  canvas.style.height = displayH + 'px';
+  canvas.style.left = offsetX + 'px';
+  canvas.style.top = offsetY + 'px';
+
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+}
+
+window.addEventListener('resize', resizeCanvas);
+window.addEventListener('orientationchange', () => setTimeout(resizeCanvas, 300));
+resizeCanvas();
+
+// 竖屏提示
+function createRotateHint() {
+  const el = document.createElement('div');
+  el.id = 'rotate-hint';
+  el.innerHTML = `<div style="position:fixed;inset:0;z-index:9999;background:#0d0805;display:flex;flex-direction:column;align-items:center;justify-content:center;color:#d4b896;font-family:system-ui,sans-serif;"><div style="font-size:64px;margin-bottom:20px;">📱</div><p style="font-size:20px;letter-spacing:0.1em;">请将设备旋转至横屏</p><p style="font-size:14px;opacity:0.5;margin-top:8px;">横屏体验更佳</p></div>`;
+  el.style.display = 'none';
+  document.body.appendChild(el);
+  return el;
+}
+
+const rotateHint = createRotateHint();
+
+function checkOrientation() {
+  const isPortrait = window.innerHeight > window.innerWidth;
+  rotateHint.style.display = isPortrait ? 'block' : 'none';
+}
+
+window.addEventListener('resize', checkOrientation);
+window.addEventListener('orientationchange', () => setTimeout(checkOrientation, 300));
+checkOrientation();
+
+// Loading
+function drawStatus(message) {
+  ctx.fillStyle = '#0d0906';
+  ctx.fillRect(0, 0, DESIGN_W, DESIGN_H);
+  ctx.fillStyle = '#f4e2bd';
+  ctx.font = '500 30px system-ui, sans-serif';
+  ctx.textAlign = 'center';
+  ctx.fillText(message, DESIGN_W / 2, DESIGN_H / 2);
+}
+
+async function boot() {
+  drawStatus('正在唤醒记忆……');
+
+  try {
+    const manifest = {
+      puzzle: './assets/images/scene_puzzle.jpg',
+      mazeMap: './assets/images/scene_maze_map.png',
+      sign: './assets/images/sign_scene.png',
+    };
+
+    const images = await Loader.loadImages(manifest, (loaded, total) => {
+      drawStatus(`正在唤醒记忆……${loaded}/${total}`);
+    });
+
+    const game = { canvas, ctx, width: DESIGN_W, height: DESIGN_H, images };
+    game.input = new InputManager(canvas, DESIGN_W, DESIGN_H);
+    game.progress = new ProgressStore('ye_v1_progress');
+    game.overlay = new Overlay(game);
+    game.chapterManager = new ChapterManager(game);
+
+    // 注册章节
+    game.chapterManager.register('ch02', Chapter02);
+    game.chapterManager.register('ch03', Chapter03);
+    game.chapterManager.register('ch08', Chapter08);
+
+    window.game = game;
+
+    // 从进度恢复
+    const saved = game.progress.load();
+    const startChapter = saved?.chapter ? `ch${String(saved.chapter).padStart(2, '0')}` : 'ch02';
+    game.chapterManager.switchTo(startChapter);
+
+    new Game(game).start();
+
+    const loadingEl = document.getElementById('loading');
+    if (loadingEl) {
+      loadingEl.classList.add('hidden');
+      setTimeout(() => loadingEl.remove(), 600);
+    }
+  } catch (error) {
+    console.error(error);
+    ctx.fillStyle = '#0d0906';
+    ctx.fillRect(0, 0, DESIGN_W, DESIGN_H);
+    ctx.fillStyle = '#d4b896';
+    ctx.font = '20px system-ui, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('出错了，请重启试试……', DESIGN_W / 2, DESIGN_H / 2);
+  }
+}
+
+boot();
+
+
+  </script>
+</body>
+</html>

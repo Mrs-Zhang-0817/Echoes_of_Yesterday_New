@@ -1,0 +1,12 @@
+node_modules/
+.DS_Store
+dist/
+.publish/
+.superpowers/
+.workb/
+.uploads/
+.claude/
+old-repo-contents/
+xyqbranch-content/
+*.tgz
+backups/
