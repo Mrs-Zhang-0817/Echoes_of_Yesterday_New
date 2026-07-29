@@ -11,3 +11,5 @@ xyqbranch-content/
 *.tgz
 backups/
 Echoes_of_Yesterday
+test-results/
+visual-reports/

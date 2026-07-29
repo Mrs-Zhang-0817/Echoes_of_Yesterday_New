@@ -31,6 +31,8 @@ const files = [
   'src/chapters/ch08_sign.js',
   'src/chapters/ch09_chime.js',
   'src/chapters/ch10_report.js',
+  // dev
+  'src/dev/DebugAPI.js',
   // main entry
   'src/main_new.js',
 ];

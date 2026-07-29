@@ -5,6 +5,7 @@ import { Loader } from './core/Loader.js';
 import { ChapterManager } from './core/ChapterManager.js';
 import { ProgressStore } from './core/ProgressStore.js';
 import { Overlay } from './core/Overlay.js';
+import { createDebugAPI } from './dev/DebugAPI.js';
 
 import { Chapter01 } from './chapters/ch01_intro.js';
 import { Chapter02 } from './chapters/ch02_puzzle.js';
@@ -88,13 +89,30 @@ async function boot() {
 
   try {
     const manifest = {
-      puzzle: './assets/images/scene_puzzle.jpg',
-      mazeMap: './assets/images/scene_maze_map.png',
-      sign: './assets/images/sign_scene.png',
-      // —— 2026-07-29 从 Echoes_of_Yesterday 旧仓库迁入的素材 ——
-      mainMenuBg: './assets/images/main_menu_bg.jpg',      // Ch1 镜前场景底图
-      reportBase: './assets/images/report_base.png',       // Ch10 记忆报告底板
-      paperBase: './assets/images/paper_base.png',         // 全局纸张纹理（弹层/签字）
+      // —— Ch2 拼图 ——
+      puzzle:     './assets/images/scene_puzzle.jpg',
+      // —— Ch8 签字关卡 ——
+      sign:              './assets/images/sign_scene.png',
+      ch8_corridor:      './assets/images/ch8_corridor.jpg',
+      ch8_mirror_wall:   './assets/images/ch8_mirror_wall.png',
+      ch8_mirror_stranger:'./assets/images/ch8_mirror_stranger.png',
+      ch8_crack:         './assets/images/ch8_crack.png',
+      ch8_hourglass:     './assets/images/ch8_hourglass.png',
+      ch8_radio:         './assets/images/ch8_radio.png',
+      // —— Ch9 风铃 ——
+      ch9_balcony:  './assets/images/ch9_balcony.jpg',
+      ch9_pipes:    './assets/images/ch9_pipes.png',
+      ch9_notebook: './assets/images/ch9_notebook.png',
+      // —— Ch10 终章 ——
+      reportBase:     './assets/images/report_base.png',
+      ch10_livingroom:'./assets/images/ch10_livingroom.jpg',
+      ch10_porridge:  './assets/images/ch10_porridge.png',
+      // —— 全局场景 & UI ——
+      mainMenuBg:  './assets/images/main_menu_bg.jpg',
+      deskBg:      './assets/images/desk_bg.jpg',
+      paperBase:   './assets/images/paper_base.png',
+      paperNoise:  './assets/images/paper_noise.png',
+      buttonFrame: './assets/images/button_frame.png',
     };
 
     const images = await Loader.loadImages(manifest, (loaded, total) => {
@@ -121,56 +139,38 @@ async function boot() {
 
     window.game = game;
 
-    // ===== 调试面板：真机浏览器状态快照（按 'D' 键打开）=====
-    window.__debug__ = {
-      state() {
-        const cm = game.chapterManager;
-        const ch = cm?.currentChapter;
-        return {
-          chapter: cm.currentName,
-          chapterClass: ch?.constructor?.name,
-          isComplete: ch?.isComplete || false,
-          chPhase: ch?.phase || '?',
-          cmPhase: cm.transition.phase,
-          cmAlpha: cm.transition.alpha,
-          cmPending: cm.pendingChapter,
-          completeFired: cm._completeFired,
-          overlay: !!game.overlay?.active,
-          overlayTitle: game.overlay?.active?.title || '',
-          inputHandlers: Object.keys(game.input.handlers || {}),
-          progress: game.progress.load(),
-          imageKeys: Object.keys(game.images || {}),
-        };
-      },
-      next() { game.chapterManager.next(); },
-      switchTo(n) { game.chapterManager.switchTo(n); },
-      forceComplete() {
-        const ch = game.chapterManager.currentChapter;
-        if (ch) { ch._completed = true; ch._complete = true; }
-      },
-      skipTo(n) {
-        // 直接跳到指定章
-        game.chapterManager.switchTo(n);
-      },
-    };
-    // 键盘快捷键：按 D 打印状态，按 1-0 跳转对应章节
+    // ===== 调试接口（开发态）=====
+    //   window.__debug__.inspect()    — 完整快照（含章节内部状态 + 交互热区）
+    //   window.__debug__.state()      — 全局状态摘要
+    //   window.__debug__.screenshotMeta() — Playwright 截图验证元数据
+    //   键盘：D=状态快照 | F=强制完成 | 1-0=跳转章节
+    const debugAPI = createDebugAPI(game);
+    window.__debug__ = debugAPI;
+
     window.addEventListener('keydown', e => {
       if (e.key === 'd' || e.key === 'D') {
-        console.table(window.__debug__.state());
+        const snap = debugAPI.inspect();
+        console.group('🛠 DebugAPI 完整快照');
+        console.log(JSON.stringify(snap, null, 2));
+        console.groupEnd();
+        // 表格视图只显示概要字段
+        console.table({
+          chapter: snap.chapter,
+          phase: snap.chapterDetail ? snap.chapterDetail.phase : '?',
+          overlayActive: snap.overlay ? snap.overlay.active : false,
+          zones: snap.chapterDetail ? (snap.chapterDetail.interactiveZones || []).length : 0,
+          progress: snap.progress ? snap.progress.memory : 0,
+        });
       }
       const num = parseInt(e.key);
-      if (num >= 1 && num <= 9) {
-        window.__debug__.skipTo('ch0' + num);
-      }
-      if (num === 0) {
-        window.__debug__.skipTo('ch10');
-      }
+      if (num >= 1 && num <= 9) debugAPI.switchTo('ch0' + num);
+      if (num === 0) debugAPI.switchTo('ch10');
       if (e.key === 'f' || e.key === 'F') {
-        window.__debug__.forceComplete();
+        debugAPI.forceComplete();
         console.log('Forced complete on current chapter');
       }
     });
-    console.log('🛠 调试面板就绪 | 按 D=状态快照 | 按 F=强制完成 | 按 1-0=跳转章节 | window.__debug__ 可用');
+    console.log('🛠 调试面板就绪 | D=状态快照(inspect) | F=强制完成 | 1-0=跳转 | window.__debug__ 可用');
 
     // 从进度恢复（clamp 到已注册章节，防止白屏）
     const REGISTERED = ['ch01','ch02','ch03','ch04','ch05','ch06','ch07','ch08','ch09','ch10'];

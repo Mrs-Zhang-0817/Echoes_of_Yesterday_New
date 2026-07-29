@@ -3,6 +3,14 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "test": "node --test"
+    "test": "node --test",
+    "build": "node build.cjs",
+    "serve": "npx serve build_out -p 3000 -s",
+    "visual-test": "npx playwright test tests/visual-test.spec.js",
+    "debug:inspect": "node build.cjs && npx serve build_out -p 3000 -s & sleep 2 && npx playwright test tests/visual-test.spec.js && kill %1"
+  },
+  "dependencies": {
+    "@playwright/test": "^1.62.0",
+    "playwright": "^1.62.0"
   }
 }
