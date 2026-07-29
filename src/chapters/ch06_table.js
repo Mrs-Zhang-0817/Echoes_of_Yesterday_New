@@ -1,5 +1,5 @@
 import { drawImageCover, drawPrompt, roundedRect } from '../utils/sceneUtils.js';
-import { BOWL, COLLECTION_PANEL, SCENT_PARTICLES, GATING_CONFIG, hitBowl, distToTarget } from '../utils/tableLayout.js';
+import { BOWL, COLLECTION_PANEL, SCENT_PARTICLES, GATING_CONFIG, hitBowl, distToTarget, attractRadius, targetLockRadius } from '../utils/tableLayout.js';
 
 function vibe(ms) {
   try { navigator.vibrate(ms); } catch (e) { /* 不支持振动 */ }
@@ -200,32 +200,47 @@ export class Chapter06 {
   }
 
   _updateGating2(dt) {
-    // 更新粒子
+    // 更新粒子（速度阻尼 + 命中锁定，避免漂走/暴露碗底棕色）
+    const damp = GATING_CONFIG.velocityDamping;
     for (const p of this.particles) {
       if (p.locked) continue;
 
       const scent = SCENT_PARTICLES.find(s => s.id === p.scentId);
       if (!scent || scent.collected) continue;
 
-      // 布朗运动
-      p.phase += dt * 2;
-      p.x += Math.sin(p.phase) * 0.5;
-      p.y += Math.cos(p.phase * 0.7) * 0.5;
+      // 布朗运动：微小随机速度扰动
+      p.vx += (Math.random() - 0.5) * 22 * dt;
+      p.vy += (Math.random() - 0.5) * 22 * dt;
 
-      // 吸附逻辑：手指靠近
+      // 吸附逻辑：手指进入 attractRadius 即被牵引（速度驱动）
       if (this.fingerX >= 0) {
-        const dist = Math.hypot(p.x - this.fingerX, p.y - this.fingerY);
-        if (dist < GATING_CONFIG.magnetRadius) {
-          const strength = 1 - dist / GATING_CONFIG.magnetRadius;
-          const angle = Math.atan2(this.fingerY - p.y, this.fingerX - p.x);
-          p.x += Math.cos(angle) * GATING_CONFIG.particleSpeed * strength * dt;
-          p.y += Math.sin(angle) * GATING_CONFIG.particleSpeed * strength * dt;
+        const dx = this.fingerX - p.x;
+        const dy = this.fingerY - p.y;
+        const dist = Math.hypot(dx, dy);
+        if (dist < attractRadius) {
+          const strength = 1 - dist / attractRadius;
+          const nx = dx / (dist || 1);
+          const ny = dy / (dist || 1);
+          p.vx += nx * GATING_CONFIG.particleSpeed * strength * dt;
+          p.vy += ny * GATING_CONFIG.particleSpeed * strength * dt;
         }
       }
 
-      // 检测是否进入目标区域
+      // 速度阻尼（velocity damping）
+      p.vx *= damp;
+      p.vy *= damp;
+
+      // 积分位置
+      p.x += p.vx * dt;
+      p.y += p.vy * dt;
+
+      // 命中锁定：进入 targetLockRadius 即锁定，吸附到目标中心不漂走
       const d = distToTarget(p.x, p.y, scent);
-      if (d < GATING_CONFIG.targetRadius) {
+      if (d < targetLockRadius) {
+        p.x = scent.targetX;
+        p.y = scent.targetY;
+        p.vx = 0;
+        p.vy = 0;
         p.locked = true;
         p.collected = true;
         vibe(8);
@@ -513,6 +528,25 @@ export class Chapter06 {
     ctx.restore();
   }
 
+  _drawRealBowl(ctx) {
+    // 真实碗层（ch6_bowl_noodles）仅放置一次，作为底层覆盖程序化的棕色汤底
+    const img = this.game.images.ch6_bowl_noodles;
+    if (!img) return;
+
+    const cx = BOWL.cx, cy = BOWL.cy;
+    const w = BOWL.rx * 2.2, h = BOWL.ry * 2.2;
+
+    ctx.save();
+    // 居中正方形裁剪，避免拉伸变形
+    const sw = Math.min(img.width, img.height);
+    ctx.drawImage(
+      img,
+      (img.width - sw) / 2, (img.height - sw) / 2, sw, sw,
+      cx - w / 2, cy - h / 2, w, h,
+    );
+    ctx.restore();
+  }
+
   _drawWarmGlow(ctx) {
     if (this.comfortProgress <= 0) return;
     const alpha = this.comfortProgress * 0.2;
@@ -566,7 +600,10 @@ export class Chapter06 {
     // 1. 背景（保持餐桌）
     this._drawTableBg(ctx, width, height);
 
-    // 2. 抽象化食物（几何体）
+    // 2. 真实碗层（只放置一次，覆盖碗底棕色）
+    this._drawRealBowl(ctx);
+
+    // 3. 抽象化食物（几何体）
     this._drawAbstractFood(ctx);
 
     // 3. 目标残影区域
@@ -761,6 +798,9 @@ export class Chapter06 {
     const { width, height } = this.game;
 
     this._drawTableBg(ctx, width, height);
+
+    // 真实碗层（只放置一次，覆盖碗底棕色）
+    this._drawRealBowl(ctx);
 
     // 食物从抽象恢复真实的过渡
     const tp = this.transformProgress;

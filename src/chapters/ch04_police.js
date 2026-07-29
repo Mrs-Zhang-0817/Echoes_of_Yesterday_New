@@ -95,6 +95,7 @@ export class Chapter04 {
       case 'form':
         this.drawFormCard(ctx);
         this.drawBracelet(ctx);
+        this.drawReunionFocus(ctx, width, height);
         break;
       case 'bracelet':
         this.drawFormCard(ctx);
@@ -404,11 +405,8 @@ export class Chapter04 {
     ctx.arc(cx, cy, glowRadius * 0.7, 0, Math.PI * 2);
     ctx.stroke();
 
-    // 中心光点
-    ctx.fillStyle = `rgba(255, 220, 120, ${0.7 + 0.3 * Math.sin(this.totalTime * 2.5)})`;
-    ctx.beginPath();
-    ctx.arc(cx, cy, 20, 0, Math.PI * 2);
-    ctx.fill();
+    // 手环焦点图（ch4_police_03）：缩放 + 位移聚焦过渡，替代纯程序化光点
+    this._drawBraceletFocus(ctx, cx, cy, revealProgress);
 
     // 文字（t > 0.8s 后淡入）
     if (t > 0.8) {
@@ -428,5 +426,46 @@ export class Chapter04 {
     }
 
     ctx.restore();
+  }
+
+  // 中心裁剪 + 圆形聚焦的通用绘制（缩放+位移）
+  _drawFocusImage(img, cx, cy, size, scale, alpha, offsetX = 0, offsetY = 0) {
+    if (!img) return;
+    ctx.save();
+    ctx.globalAlpha = alpha;
+    ctx.translate(cx + offsetX, cy + offsetY);
+    ctx.scale(scale, scale);
+    // 圆形聚焦裁剪，突出关键物件
+    ctx.beginPath();
+    ctx.arc(0, 0, size / 2, 0, Math.PI * 2);
+    ctx.clip();
+    // 居中正方形裁剪，避免拉伸
+    const sw = Math.min(img.width || size, img.height || size);
+    const sx = (img.width - sw) / 2;
+    const sy = (img.height - sw) / 2;
+    ctx.drawImage(img, sx, sy, sw, sw, -size / 2, -size / 2, size, size);
+    ctx.restore();
+  }
+
+  _drawBraceletFocus(ctx, cx, cy, revealProgress) {
+    const img = this.game.images.ch4_police_03;
+    if (!img) return;
+    // 缩放 + 位移聚焦过渡：从小图缩放放大并向中心位移
+    const scale = 0.4 + 0.6 * revealProgress;
+    const offsetX = (1 - revealProgress) * 70;
+    const offsetY = (1 - revealProgress) * 24;
+    const alpha = Math.min(1, revealProgress * 1.2);
+    this._drawFocusImage(img, cx, cy, 320, scale, alpha, offsetX, offsetY);
+  }
+
+  drawReunionFocus(ctx, width, height) {
+    const img = this.game.images.ch4_police_08;
+    if (!img) return;
+    // 重逢焦点：表单出现时从桌面左侧缩放淡入，作为关键物件焦点
+    const p = Math.min(1, this.phaseTime / 1.0);
+    const cx = 300, cy = 430;
+    const scale = 0.5 + 0.5 * p;
+    const alpha = Math.min(1, p);
+    this._drawFocusImage(img, cx, cy, 200, scale, alpha);
   }
 }

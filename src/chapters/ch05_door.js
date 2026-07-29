@@ -690,23 +690,29 @@ export class Chapter05 {
     const cfg = ELEVATOR_CONFIG;
     ctx.save();
 
-    ctx.shadowColor = 'rgba(0,0,0,0.5)';
-    ctx.shadowBlur = 20;
-    ctx.shadowOffsetY = 4;
+    // UI v1.1 向日葵电梯面板美术 (ch5_elevator_sunflower_panel.png) 作底；保留交互按钮叠在其上
+    const artPanel = this.game.images.ch5_elevator_sunflower_panel;
+    if (artPanel && artPanel.naturalWidth) {
+      ctx.drawImage(artPanel, cfg.panelX, cfg.panelY, cfg.panelWidth, cfg.panelHeight);
+    } else {
+      ctx.shadowColor = 'rgba(0,0,0,0.5)';
+      ctx.shadowBlur = 20;
+      ctx.shadowOffsetY = 4;
 
-    const panelGrad = ctx.createLinearGradient(cfg.panelX, cfg.panelY, cfg.panelX, cfg.panelY + cfg.panelHeight);
-    panelGrad.addColorStop(0, '#2a2825');
-    panelGrad.addColorStop(0.5, '#353330');
-    panelGrad.addColorStop(1, '#2a2825');
-    ctx.fillStyle = panelGrad;
-    roundedRect(ctx, cfg.panelX, cfg.panelY, cfg.panelWidth, cfg.panelHeight, 16);
-    ctx.fill();
+      const panelGrad = ctx.createLinearGradient(cfg.panelX, cfg.panelY, cfg.panelX, cfg.panelY + cfg.panelHeight);
+      panelGrad.addColorStop(0, '#2a2825');
+      panelGrad.addColorStop(0.5, '#353330');
+      panelGrad.addColorStop(1, '#2a2825');
+      ctx.fillStyle = panelGrad;
+      roundedRect(ctx, cfg.panelX, cfg.panelY, cfg.panelWidth, cfg.panelHeight, 16);
+      ctx.fill();
 
-    ctx.shadowBlur = 0;
-    ctx.strokeStyle = 'rgba(100,95,85,0.5)';
-    ctx.lineWidth = 1.5;
-    roundedRect(ctx, cfg.panelX, cfg.panelY, cfg.panelWidth, cfg.panelHeight, 16);
-    ctx.stroke();
+      ctx.shadowBlur = 0;
+      ctx.strokeStyle = 'rgba(100,95,85,0.5)';
+      ctx.lineWidth = 1.5;
+      roundedRect(ctx, cfg.panelX, cfg.panelY, cfg.panelWidth, cfg.panelHeight, 16);
+      ctx.stroke();
+    }
 
     ctx.fillStyle = '#706860';
     ctx.font = '12px system-ui';
@@ -829,9 +835,16 @@ export class Chapter05 {
 
   renderGating2Elevating(ctx) {
     const { width, height } = this.game;
+    const floor = Math.max(1, Math.min(5, Math.floor(this.phaseTime / 0.4) + 1));
 
     ctx.save();
-    this.drawElevatorBg(ctx, width, height);
+    // 1→5 楼层上升序列（UI v1.1 楼层展示图 ch5_floor_display_N.png，缺失则回退到程序背景）
+    const floorDisplay = this.game.images[`ch5_floor_display_${floor}`];
+    if (floorDisplay && floorDisplay.naturalWidth) {
+      ctx.drawImage(floorDisplay, 0, 0, width, height);
+    } else {
+      this.drawElevatorBg(ctx, width, height);
+    }
 
     ctx.translate(0, -this.elevateOffset);
     this.drawElevatorPanel(ctx);
@@ -850,7 +863,7 @@ export class Chapter05 {
     ctx.font = 'bold 36px system-ui, "PingFang SC", sans-serif';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    ctx.fillText(`${Math.min(1 + Math.floor(this.phaseTime / 0.4), 6)}F`, width / 2 + shake, height / 2 - 40);
+    ctx.fillText(`${floor}F`, width / 2 + shake, height / 2 - 40);
 
     ctx.fillStyle = '#a09080';
     ctx.font = '20px system-ui, "PingFang SC", sans-serif';

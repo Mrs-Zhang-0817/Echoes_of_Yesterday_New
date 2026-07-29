@@ -7,7 +7,7 @@
 
 ### 核验边界（必须先读）
 
-- **已实测**：本地静态服务器可启动；加载页、Ch1 开场和 Ch10 晨光客厅可正常渲染，未见浏览器控制台错误；`npm test` 的 4 项回归测试全部通过。
+- **已实测**：本地静态服务器可启动；加载页、Ch1 开场和 Ch10 晨光客厅可正常渲染，未见浏览器控制台错误；`npm test` 的 **20 项**回归测试全部通过（含 Ch2/3 闪回时序、Ch4/6 美术与粒子、Ch5 向日葵电梯、Ch7/8 叙事、Ch9/10 状态机、记忆报告 Overlay、叙事活动解耦等）。
 - **已代码核验**：十章状态机、触发热区、完成条件、时序、存档、全部已注册资源、资源调用关系与未接入资源。
 - **尚未在真机完整人工通关**：Ch2 拖拽手感、Ch7 暗处可读性、Ch8 手写成功率及所有振动反馈。因此本文将它们写为“当前实现”，不写成“已由手机体验确认”。
 - **版本边界**：工作区在写本文档前已有未提交的代码和美术变更；本报告描述的正是这一“当前工作区版本”，不等同于任何旧策划、README 或历史构建产物。
@@ -34,13 +34,15 @@
 ### 1.3 章节状态机与转场
 - `ChapterManager.js` 持有当前章节实例，驱动 `onEnter / update / render / handleDown…` 生命周期。
 - **转场参数**：`transition = { phase:'idle', alpha:0, duration:0.3 }`——即**章节与章节之间是一段 300ms 的黑屏淡入淡出**（`renderTransition` 用 `rgba(0,0,0,alpha)` 铺满）。
-- 当 `chapter.isComplete` 为真时：弹**完成 Overlay**（`type:'complete'`，单按钮"继续下一章节" → `next()`），并把 `phase` 置 `'blocked'` 阻断交互直到用户点击。
+- 当 `chapter.isComplete` 为真时：弹**记忆恢复报告 Overlay**（由 `src/ui/ArtworkMemoryReport.js` 渲染的 `type:'complete'`，含章节底图 + 记忆进度条 + 单按钮"继续下一章节" → `next()`），并把 `phase` 置 `'blocked'` 阻断交互直到用户点击。记忆值取自 `REPORT_PROGRESS`（每章完成时的累计记忆值数组）。
+- **叙事活动层（解耦）**：所有"非互动的叙事呈现"（章节完成报告、闪回、终章蒙太奇）都抽成 `src/narrative/` 下的独立「活动」模块（`FlashbackActivity` / `MontageActivity`）与 `src/ui/ArtworkMemoryReport.js`，由章节只负责驱动、不参与其绘制细节。这样队友可以用另一种表现形式替换任一活动文件（维持 `start/update/render/isFinished` 契约即可），实现"协作择优保留"。详见 `src/narrative/README.md`。
 
 ### 1.4 全局叙事弹层 Overlay
 - 遮罩 `rgba(0,0,0,0.6)`；卡片 **420×280** 居中（圆角 16）。
 - 标题 `#2a1a0c` bold 24px；正文 `#4d3420` 17px；按钮 180×44（`#4d3420` 底 / `#fcf5e6` 字）。
 - **排他性**：`if (this.active) return;` —— 同一时刻只允许一个弹层。
 - 复用 `src/ui/ArchiveUI.js` 的 `drawArchivePanel / drawArchiveStamp / drawArchiveButton`。
+- **完成类弹层已解耦**：`Overlay.show({type:'complete', ...})` 转发给 `new ArtworkMemoryReport(game)`，由它绘制章节底图 + 记忆进度条 + "继续下一章节"按钮（按钮点击先 `hide()` 再 `onContinue`）。非 `complete` 类配置仍走原卡片路径。报告底图位于 `assets/images/report/ch0N.png`（缺失章节回退 `report_base.png`）。
 
 ### 1.5 进度存储
 - `ProgressStore.js`：localStorage key **`ye_v1_progress`**。
@@ -77,12 +79,12 @@
 | Ch2 接女儿放学 | `puzzle`(=scene_puzzle.jpg)、`ch2_flashback_01`~`05` | 铁盒/钥匙/糖果/照片套件未用 |
 | Ch3 迷途 | `ch3_map_phone`、`ch3_cityup_01`~`04` | 老社区/街道/校门/NPC/红领巾套件未用 |
 | Ch4 警局 | `ch4_police_01` | **8 张警局图只用第 1 张** |
-| Ch5 归家迷途 | `ch5_bg_elevator`、`ch5_sunflower_sticker` | — |
-| Ch6 餐桌博弈 | `ch6_bg_diningroom`（`deskBg` 仅缺图回退） | 原图已有面与煎蛋，代码又叠绘抽象碗、面条与“怪物蛋” |
+| Ch5 归家迷途 | `ch5_bg_elevator`、`ch5_sunflower_sticker`、`ch5_elevator_sunflower_panel` | 楼层上升已用程序化楼层显示（`ch5_floor_display_N` 未注册，回退程序化） |
+| Ch6 餐桌博弈 | `ch6_bg_diningroom`（`deskBg` 仅缺图回退）、`ch6_bowl_noodles` | 原图已有面与煎蛋，代码又叠绘抽象碗、面条与“怪物蛋” |
 | Ch7 惊悚夜醒 | `ch7_bg_bedroom_night`、`ch7_door_lock`、`ch7_flashlight_beam` | 幻觉阴影图未用 |
 | Ch8 自我和解 | `sign`(=sign_scene.png)、`ch8_corridor`、`ch8_mirror_smile`、`paperBase`、`paperNoise` | 镜子墙/陌生镜/裂纹/沙漏/收音机套件未用 |
-| Ch9 风铃 | `ch9_balcony`、`ch9_pipes`、`ch9_notebook_glyphs` | 音符/管子彩色变体未用；`ch9_notebook` 未用 |
-| Ch10 认出 | `ch10_livingroom`、`ch10_porridge`、`reportBase` | `ch10_ending_white` 未注册未用 |
+| Ch9 风铃 | `ch9_balcony`、`ch9_pipes`、`ch9_notebook_glyphs`、`ch9_father_building_chime` | 4 色音符为程序绘制；`ch9_father_building_chime` 用于"父亲做风铃"闪回活动 |
+| Ch10 认出 | `ch10_livingroom`、`ch10_porridge`、`reportBase`、`ch10_daughter_porridge_closeup`、`ch10_father_daughter_embrace` | 后两者用于终章蒙太奇活动；`ch10_ending_white` 未注册未用 |
 
 > 正常路径共 **30 个文件**被真实绘制；另有 `deskBg` 仅在背景缺失时作为回退候选。
 
@@ -204,45 +206,45 @@
 - **sign 阶段**：**2.5s** 静止展示签名纸（`sign`=sign_scene.png）于走廊背景 `ch8_corridor` + 压暗 `rgba(10,6,4,0.45)`，右上角 `ch8_mirror_smile` 幽灵叠加（alpha 0.42）。
 - **zoom 阶段**：**1.6s** 缓动推近签名区（easeInOutCubic：`raw<0.5` → `4*raw³`；`raw≥0.5` → `1-pow(-2raw+2,3)/2`）。
 - **writing 阶段**：纸张底 `paperBase` + 噪点 `paperNoise`（未加载回退程序化米黄渐变）；120 点程序化纸纹。
-  - **手写识别**：笔画分类 `classifyStroke`（dot/horizontal/vertical/fold/na/pie）；畸变规则 `deformStroke`：**横↔竖、撇↔捺**。`matchSignature` 按左右两区（以 x 中线分）统计笔画类型打分，`PASS_SCORE=80`，需 **≥6 笔**、每区 ≥3 笔。
+  - **手写识别**：笔画分类 `classifyStroke`（dot/horizontal/vertical/fold/na/pie）；畸变规则 `deformStroke`：**横↔竖、撇↔捺**。`matchSignature` 按左右两区（以 x 中线分）统计笔画类型打分，`PASS_SCORE=60`，需 **≥5 笔**或触发**横扫手势（swipeDetected）**；宽泛"向阳"笔迹启发式（笔画数 + 双区覆盖面积）放宽判定，降低软卡关风险。
   - **提交/清除按钮**：右下角"清除"(90×36)、"提 交"(110×40)；写阶段点击**先判按钮**（P0-1 修复：否则提交/清除永远点不到，全员卡关）。
   - **超时**：书写计时 `TIMEOUT_SEC=10`；超时弹层"时间过了许久 / 连笔写——手记得的，疾病夺不走 / 再试试"；`MAX_ATTEMPTS=5` 失败 5 次后给"笔迹畸变规则"提示层。
   - **成功**：`matchSignature` 达标 → `passed=true` → `markChapterComplete(8, 72)`；完成弹层由 ChapterManager 统一弹。
 - **完成弹层**：标题"辨认成功" / 正文"——\n李向阳"
-- **⚠️ 待调参（P1-4）**：`PASS_SCORE=80` 偏高，真实手写下可能偏难导致"软卡关"，需真机调参。
+- **✅ 签名阈值已下调（P1-4 修复）**：`PASS_SCORE` 由 80 降至 **60**，并新增横扫手势与宽泛"向阳"笔迹启发式作为宽容通过路径，软卡关风险已显著降低；仍建议真机复测手写手感。
 - **美术**：`sign`、`ch8_corridor`、`ch8_mirror_smile`、`paperBase`、`paperNoise`；镜子墙/陌生镜/裂纹/沙漏/收音机套件未用。
 - **屏上提示**：sign 阶段引导；writing 阶段"请辨认并签下这个名字"；超时/提示层文案见上。
 
 ### 3.9 Ch9 风铃（`ch09_chime.js`）
-- **叙事**：把散落的 5 个音符（Do Re Mi Fa Sol）拖回风铃上，唤醒记忆的风铃。
-- **phase**：`playing → complete`（无中间 narrative，进场即玩）
-- **音符**：5 个 `NOTES`（Do/Re/Mi/Fa/Sol，各带目标 `targetX/Y=340~740, 360`，彩色 `#e8a840` 等）；初始在目标位附近 ±(80~150) 随机散落。
-- **背景**：`ch9_balcony` + 压暗 `rgba(12,8,6,0.42)`（未加载回退程序化暖棕渐变）。
-- **风铃管**：`ch9_pipes` 顶部居中（缩放到高 350）；未加载回退程序化窗框线条。
-- **谱本符号**：`ch9_notebook_glyphs` 右下角叠加（complete 时 alpha 0.9，平时 0.55）。
-- **拖拽吸附**：`dist < 50` 吸附归位 + `vibrate(15)`；5 个全归位 → `state='complete'` → `markChapterComplete(9, 85)`。
-- **完成摆动**：归位后 **1.5s** 内 `swing = sin(t*8)*6*(1-t/1.5)` 度衰减摆动。
-- **完成弹层**：标题"记忆的风铃" / 正文"Do Re Mi Fa Sol……风铃响了。"
-- **美术**：`ch9_balcony`、`ch9_pipes`、`ch9_notebook_glyphs`；`ch9_notebook` 未用；彩色音符/管子变体未注册。
-- **屏上提示**："将音符拖拽到风铃上"
+- **叙事**：把碎裂的记忆风铃重新拼合，先以彩色音符归位、再回看父亲做风铃的闪回、最后以节奏音游点亮风铃，完成 Ch9→Ch10 的情绪桥。
+- **phase（六态）**：`intro → colorRebuild → flashback → rhythmGame → resolve → complete`（导出常量 `CH9_STATES` 供测试与衔接校验）。
+- **intro**：阳台底图 + 压暗；提示"风铃碎了，记忆也碎了……把色彩重新拼回五线谱。"；**3s 自动**或轻触跳过 → `colorRebuild`。
+- **colorRebuild（互动 A：色块重构）**：4 个彩色音符（Do/Re/Mi/Fa，色 `#e8a840`/`#d4746c`/`#a890c8`/`#7db8a0`）初始散落于上方；五线谱上 4 个同色目标槽（`SLOTS`，`cx=360+i*190, cy=430`）。拖拽音符，中心距对应槽 `< 75px` 即吸附归位 + `vibrate(15)`；4 个全归位 → `flashback`。
+- **flashback（叙事活动，解耦）**：`FlashbackActivity` 播放 `ch9_father_building_chime`（"父亲做风铃"），`perFrame 2.6s`、缓动交叉淡入；`onComplete` → `rhythmGame`。该活动与章节逻辑解耦，队友可换素材/形式。
+- **rhythmGame（互动 B：音游核心）**：4 条轨道（与 4 色音符一一对应，`cx=320+i*200`）+ 底部风铃管 + 判定线 `hitLine=600`。彩色音符从顶部下落（速度 230，慢速 150）。点击轨道命中判定线 ±90px 内的音符 → 命中（`combo++`、`score += 10+combo`、`vibrate(15)`）；漏击 → `combo` 清零，连续 3 次漏击 → `slowMode` 自动慢速（宽容防卡关）。共生成 **10** 个音符，全部结算（命中或漏过）→ `resolve`。HUD 显示分数与"连击 xN"；背景随连击从冷蓝 `rgba(40,70,120)` 升温到暖橙 `rgba(180,110,40)`（冷→暖过渡）。
+- **resolve**：暖色脉冲 + 已归位音符发光，**2.5s** → `complete`。
+- **complete**：`markChapterComplete(9, 85)`；统一记忆报告 Overlay 弹"记忆的风铃 / Do Re Mi Fa……风铃重新响了。" → 继续下一章节（Ch10）。
+- **美术**：`ch9_balcony`、`ch9_pipes`、`ch9_notebook_glyphs`、`ch9_father_building_chime`；彩色音符/管子为程序绘制；`ch9_notebook` 未用。
+- **屏上提示**：intro"把色彩重新拼回五线谱"；colorRebuild"把彩色音符拖到对应颜色的槽位"；rhythmGame"跟着节奏，点亮风铃"。
+- **已知未接**：本音游目前为**纯视觉**反馈，无真实音频（"单音—织体—完整旋律"的声音承诺待新增音频系统）。
 
 ### 3.10 Ch10 认出（`ch10_report.js`）
-- **叙事**：终章。桌上热粥 → 喝下（白场过渡）→ 记忆恢复档案报告页。
-- **phase**：`porridge → fadeout → report`（**终态，永不推进下一章**）
-- **isComplete 永远返回 `false`**——ChapterManager 不会为 Ch10 弹"完成"卡，它是终点。
+- **叙事**：终章。桌上热粥 → 喝下 → 蒙太奇回看这一路 → 父女拥抱定格（白场过渡）→ 记忆恢复档案报告页（**终局闭合，记忆 100%**）。
+- **phase（四态）**：`porridge → montage → reunion → finalReport`（导出常量 `CH10_STATES` 供测试与衔接校验）。
+- **isComplete 永远返回 `false`**——ChapterManager 不会为 Ch10 弹"完成"卡；Ch10 自行在 `finalReport` 阶段执行 `markChapterComplete(10, 100)`，把记忆主线闭合到 100%。
 - **porridge 阶段**：背景 `ch10_livingroom` + 压暗 `rgba(18,10,6,0.38)`（回退程序化暖渐变）；木桌条 + 木纹；碗 `ch10_porridge`（回退程序化瓷碗）；**蒸汽 10–15 粒子**（life 增速 0.35/s，向上飘 + 正弦漂移，alpha 正弦呼吸）。
-- **交互**：点击粥碗热区（`bowlCx=640, bowlCy=500, hitRadius 150`）→ `fadeout`。
-- **fadeout**：**2.0s** 白色遮罩 `rgba(255,255,255,alpha)` 渐显 → `report`。
-- **report 阶段**：
+- **交互**：点击粥碗热区（`bowlCx=640, bowlCy=500, hitRadius 150`）→ `montage`。
+- **montage（叙事活动，解耦）**：`MontageActivity` 按帧柔和交叉淡入播放 `ch10_livingroom → ch10_porridge → ch10_daughter_porridge_closeup → ch10_father_daughter_embrace`，配字幕"很多年前，这间屋子也曾热闹过。/ 一碗粥，等了很久。/ 她终于认出了回家的路。/ 这一次，没有再迷路。"；`perFrame 1.6s`、缓动交叉淡入；`onComplete` → `reunion`。该活动与章节逻辑解耦，队友可换素材/形式。
+- **reunion（拥抱定格 + 白场过渡）**：以 `ch10_father_daughter_embrace` 铺满，**白色淡入定格**（前 1.2s 从白场渐显，1.4s 后浮出"这一次，没有再迷路。"），停留至 **3.0s** → `finalReport`。
+- **finalReport 阶段**：进入即 `markChapterComplete(10, 100)`（**终局闭合**）。
   - 底板 `reportBase`（未加载回退程序化米黄纸 + 60 固定噪点）。
   - 标题区 `drawArchivePanel("记忆恢复档案")` + 印章 `drawArchiveStamp("已归档")`。
-  - **10 章列表**：序号+标题 + 状态（✅/◻）+ 各章 `memory%`；已完成行高亮。
-  - **记忆进度条**：`barX=340, barY=610, w=600, h=20`，填充渐变 `#c4a060→#8B6914`，右侧显示 `${memory}%`。
+  - **10 章列表**：序号+标题 + 状态（✅/◻）+ 各章 `memory%`；已完成行高亮（因已 `markChapterComplete(10,100)`，第 10 章现在正确打勾）。
+  - **记忆进度条**：`barX=340, barY=610, w=600, h=20`，填充渐变 `#c4a060→#8B6914`，右侧显示 `${memory}%`（现正确显示 **100%**）。
   - **重新开始按钮**：`restartBtn{x:550,y:660,w:180,h:42}`（`drawArchiveButton`）；点击 → `progress.reset()` → 100ms 后 `switchTo('ch01')`（回到序曲，不跳过）。
-- **⚠️ 终章记忆值问题**：Ch10 永不写档，报告页读取 `progress.memory` = 完成 Ch9 时的 **85%**；而章节列表里 Ch10 标 100% 且未打勾（因 `completed` 不含 10）。即**终章报告"记忆恢复进度"实际只显示 85%，而非预期的 100%**。
-- **美术**：`ch10_livingroom`、`ch10_porridge`、`reportBase`；`ch10_ending_white` 未注册未用。
-- **屏上提示**："桌上有一碗热粥……喝下去吧。"
-- **叙事收束现状**：画面中没有女儿、主角独白或“认出”的文字确认；热粥点击后直接转为档案表。因此终章当前更像系统结算页，而不是一段已被完整演出的父女关系收束。
+- **✅ 终章记忆值问题已修复**：原 §4 第 4 项"Ch10 记忆条停在 85%"已解决——`finalReport` 阶段显式写档 `100%`，报告页进度条与第 10 章勾选状态现在一致达到 100%。
+- **美术**：`ch10_livingroom`、`ch10_porridge`、`reportBase`、`ch10_daughter_porridge_closeup`、`ch10_father_daughter_embrace`；`ch10_ending_white` 未注册未用。
+- **屏上提示**：porridge"桌上有一碗热粥……喝下去吧。"；reunion"这一次，没有再迷路。"。
 
 ---
 
@@ -261,12 +263,12 @@
 | 7 | 惊悚夜醒 | 60 | **60** | 叙事文案 | 一致 |
 | 8 | 自我和解 | 75 | **72** | 叙事文案 | 数值≠计划 |
 | 9 | 风铃 | 90 | **85** | 叙事文案 | 数值≠计划 |
-| 10 | 认出（终章） | 100 | **不写档**（isComplete 恒 false） | 无完成弹层 | 报告读取 85% |
+| 10 | 认出（终章） | 100 | **100**（finalReport 阶段显式 `markChapterComplete(10,100)`） | 无完成弹层（终章自管渲染） | 报告读取 100% |
 
-> **累计主线实际走向**：5 → 15 → 22 → 30 → 40 → 52 → 60 → 72 → 85 →（终章停在 85%）。
+> **累计主线实际走向**：5 → 15 → 22 → 30 → 40 → 52 → 60 → 72 → 85 → **100%**（终章 `finalReport` 显式写档 100，闭环达成）。
 > **三处计划/实际不符**：Ch6（50 vs 52）、Ch8（75 vs 72）、Ch9（90 vs 85）。
 > **两处弹层文案与数值不符**：Ch5（写 40 却显示 35%）、Ch6（写 52 却显示 45%）。
-> **终章缺口**：Ch10 不写档，报告页记忆条最高只能到 85%。
+> **终章缺口（已修复）**：Ch10 原不写档，报告页记忆条最高只能到 85%；现由 `finalReport` 显式写档 100%，报告页进度条与第 10 章勾选状态一致达到 100%。
 
 ---
 
@@ -275,10 +277,10 @@
 1. **Ch5 `gating1` 声相定位整段被跳过**：叙事后直接进 `gating2`，`returnNightLayout.js` 的 `SOUND_SOURCES` / `GATING1_CONFIG` 配置实际不生效。是 bug 还是设计取舍未定。
 2. **Ch5 / Ch6 完成弹层百分比文案与真实记忆值不符**（见 §4）。
 3. **Ch6 / Ch8 / Ch9 实际写入 memory 值与 `chapters.json` 计划值不符**（见 §4）。
-4. **Ch10 终章记忆条停在 85%**：因 `isComplete` 恒 false 不写档，报告页读不到 100%。需确认终章是否应强制把 memory 置 100。
+4. **Ch10 终章记忆条停在 85%（已修复）**：原因 `isComplete` 恒 false 不写档，报告页读不到 100%；现 `finalReport` 阶段显式 `markChapterComplete(10,100)`，报告页进度条与第 10 章勾选均达 100%。
 5. **Ch1 卧室套件美术全未用**：仅 `mainMenuBg` + 程序化压暗，原设的镜子/收音机/衣服等资产闲置。
 6. **Ch4 警局 8 张图只用第 1 张**：序列帧/环境变化未展开。
-7. **Ch8 签名阈值 `PASS_SCORE=80` 偏高（P1-4）**：真人手写可能偏难，有"软卡关"风险，待真机调参。
+7. **Ch8 签名阈值（P1-4 已修复）**：`PASS_SCORE` 由 80 降至 60，并新增横扫手势 + 宽泛"向阳"笔迹启发式；软卡关风险已降低，仍建议真机复测手写手感。
 8. **大量美术资产闲置**：25 个已注册 0 引用 + 约 30 个磁盘未注册文件（含一堆 `_v2` 版本、彩色变体、signature_panel 等），对加载体积无益。
 9. **Ch8 `update` 中 `totalDT` 被重复累加**（`this.totalDT += dt` 在 writing 分支内又加一次）——当前超时逻辑用的是 `elapsed` 而非 `totalDT`，故无功能影响，但属代码瑕疵。
 10. **竖屏/窄屏仅提示旋转**，无响应式缩放布局（依赖 `createRotateHint`）。
@@ -404,8 +406,8 @@
 7. **食物从恐惧到熟悉**：玩家先把手停在碗上使“安全感”满格，再把三类漂浮香气吸到目标位。此过程是当前主线中互动层次最多的一段；成功时抽象食物变暖、文字说“这味道……好熟悉”。
 8. **黑暗找门锁**：夜卧室中靠局部光寻找门锁；长时间找不到会被月光和“任意点开门”的兜底带过。门开后进入签字确认。
 9. **笔迹确认身份**：镜中笑脸和走失老人登记单推近为纯纸张。玩家没有描红目标，只能自由书写并接受笔迹畸变与分类判定；成功后系统确认“李向阳”。
-10. **风铃归位**：在阳台将五个音符拖到风铃上，风铃短暂摆动。没有真实铃声，主要是视觉上的轻量缓冲章。
-11. **热粥与档案**：晨光客厅中点击热粥，白场后显示十章档案。即使前九章都完成，档案仍显示 85%、第十章未完成；玩家只能点“重新开始”清档回到镜前。
+10. **风铃归位（两段式）**：阳台先把四个彩色音符拖回五线谱的对应色槽，回看“父亲做风铃”的闪回，再以四管音游点准下落音符点亮风铃；连击升温让客厅由冷转暖。无真实铃声，但已立起 Ch9→Ch10 的情绪桥。
+11. **热粥、蒙太奇与档案**：晨光客厅中点击热粥，先以蒙太奇回看这一路（客厅→粥→女儿特写→父女拥抱）并配字幕，再定格父女拥抱（白场过渡），最后显示十章档案——此时记忆恢复进度正确达到 **100%**、第十章已勾选；玩家可点“重新开始”清档回到镜前。
 
 这条旅程说明：当前版本已经具备“可从 Ch1 走到 Ch10”的完整可达链，但线索因果、声音承诺、视觉主体一致性和终局完成感尚未形成闭环。这些是后续先改文档、再倒推呈现时最值得逐项决策的对象。
 

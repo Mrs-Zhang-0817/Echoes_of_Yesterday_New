@@ -1,18 +1,39 @@
 import { roundedRect } from '../utils/sceneUtils.js';
 import { drawArchiveButton, drawArchivePanel, drawArchiveStamp } from '../ui/ArchiveUI.js';
+import { ArtworkMemoryReport } from '../ui/ArtworkMemoryReport.js';
 
 export class Overlay {
   constructor(game) {
     this.game = game;
     this.active = null;
     this._overlayHandlers = null;
+    this._report = null; // 章节完成报告（可抽离的叙事活动）
   }
 
   show(config) {
     if (this.active) return;
     this.active = { ...config, time: 0 };
 
-    // 接管输入
+    // 章节完成 → 委托 Canvas 报告渲染器，由它接管输入与绘制
+    if (config.type === 'complete' && config.chapterNumber != null) {
+      this._report = new ArtworkMemoryReport(this.game);
+      this._report.open({
+        chapterNumber: config.chapterNumber,
+        memoryFrom: config.memoryFrom,
+        memoryTo: config.memoryTo,
+        onContinue: () => { config.onContinue?.(); this.hide(); },
+      });
+      this._overlayHandlers = {
+        down: point => this._report?.handleDown(point),
+        move: () => {},
+        up: () => {},
+        cancel: () => {},
+      };
+      this.game.input.setHandlers(this._overlayHandlers);
+      return;
+    }
+
+    // 传统卡片路径（非 complete 的兜底）
     this._overlayHandlers = {
       down: point => this._handleDown(point),
       move: () => {},
@@ -24,6 +45,7 @@ export class Overlay {
 
   hide() {
     this.active = null;
+    this._report = null;
     this.game.input.setHandlers();
     this.game.chapterManager.currentChapter?.onEnter?.();
   }
@@ -48,11 +70,23 @@ export class Overlay {
   }
 
   update(dt) {
-    if (this.active) this.active.time += dt;
+    if (this.active) {
+      this.active.time += dt;
+      this._report?.update(dt);
+    }
   }
 
   render(ctx) {
     if (!this.active) return;
+
+    // 报告渲染器路径
+    if (this._report) {
+      const { width, height } = this.game;
+      this._report.render(ctx, width, height);
+      return;
+    }
+
+    // 传统卡片渲染
     const { width, height } = this.game;
     const config = this.active;
 
@@ -101,8 +135,6 @@ export class Overlay {
     for (let i = 0; i < btns.length; i++) {
       const bx = startBtnX + i * (btnW + gap);
       const by = btnTop;
-      btns[i].bbox = { x: bx, y: by, w: btnW, h: btnH };
-
       btns[i].bbox = drawArchiveButton(ctx, bx, by, btnW, btnH, btns[i].text);
     }
 

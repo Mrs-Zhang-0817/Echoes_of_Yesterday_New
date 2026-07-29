@@ -1,5 +1,10 @@
 import { drawPrompt, roundedRect } from '../utils/sceneUtils.js';
 import { MAZE_CONFIG, validatePath, hitStart, getNode } from './ch03_mazeLayout.js';
+import { FlashbackActivity } from '../narrative/FlashbackActivity.js';
+
+// Ch3 成功状态顺序（用于测试与叙事衔接一致性校验）
+export const CH3_SUCCESS_STATES = ['successHold', 'routeFadeOut', 'cityFlashback', 'complete'];
+const CH3_CITY_FLASHBACK_FRAMES = ['ch3_cityup_01', 'ch3_cityup_02', 'ch3_cityup_03', 'ch3_cityup_04'];
 
 export class Chapter03 {
   constructor(game) {
@@ -8,6 +13,7 @@ export class Chapter03 {
     this.phase = 'idle';
     this.phaseTime = 0;
     this._completed = false;
+    this.flashback = null;
     this.hoveredNode = null;
     this.debug = false;
     this.resetBtn = { x: 880, y: 620, w: 380, h: 80 };
@@ -64,7 +70,7 @@ export class Chapter03 {
     this.points.push(point);
     const result = validatePath(this.points);
     if (result.success) {
-      this.phase = 'success';
+      this.phase = 'successHold';
       this.phaseTime = 0;
       try { navigator.vibrate?.(15); } catch {}
     } else if (!result.hitWrong) {
@@ -119,12 +125,31 @@ export class Chapter03 {
         this.phase = 'idle';
         this.phaseTime = 0;
       }
-    } else if (this.phase === 'success') {
+    } else if (this.phase === 'successHold') {
       this.phaseTime += dt;
-      if (this.phaseTime >= 1.8 && !this._completed) {
-        this._completed = true;
-        this.game.progress.markChapterComplete(3, 22);
+      if (this.phaseTime >= 1.8) {
+        this.phase = 'routeFadeOut';
+        this.phaseTime = 0;
       }
+    } else if (this.phase === 'routeFadeOut') {
+      this.phaseTime += dt;
+      if (this.phaseTime >= 1.0) {
+        this.phase = 'cityFlashback';
+        this.phaseTime = 0;
+        this.flashback = new FlashbackActivity(this.game);
+        this.flashback.start({
+          frames: CH3_CITY_FLASHBACK_FRAMES,
+          perFrame: 1.0,
+          crossfade: 0.45,
+          onComplete: () => {
+            this._completed = true;
+            this.game.progress.markChapterComplete(3, 22);
+            this.phase = 'complete';
+          },
+        });
+      }
+    } else if (this.phase === 'cityFlashback') {
+      this.flashback?.update(dt);
     }
   }
 
@@ -141,20 +166,17 @@ export class Chapter03 {
       ctx.fillRect(0, 0, width, height);
     }
 
-    if (this.phase === 'success') {
-      const frame = Math.min(4, Math.floor(this.phaseTime * 2) + 1);
-      const image = this.game.images[`ch3_cityup_0${frame}`];
-      if (image) {
-        ctx.save();
-        ctx.globalAlpha = Math.min(1, this.phaseTime / 0.25);
-        ctx.drawImage(image, 0, 0, width, height);
-        ctx.restore();
-      }
+    // 金色路线淡出阶段：alpha 从 1 渐变到 0
+    let routeAlpha = 1;
+    if (this.phase === 'routeFadeOut') routeAlpha = Math.max(0, 1 - this.phaseTime / 1.0);
+
+    // 城市闪回阶段由 FlashbackActivity 统一驱动（缓动交叉淡入，非硬切）
+    if (this.phase === 'cityFlashback') {
+      this.flashback?.render(ctx, width, height);
+    } else {
+      this.drawHoverNode(ctx);
+      this.drawPlayerLine(ctx, routeAlpha);
     }
-
-
-    this.drawHoverNode(ctx);
-    this.drawPlayerLine(ctx);
 
     if (this.phase === 'wrong') {
       const flash = Math.sin(this.phaseTime * 14) * 0.5 + 0.5;
@@ -174,13 +196,15 @@ export class Chapter03 {
       drawPrompt(ctx, '从起点画一条路线到希望小学', width / 2, height - 45, 0);
     } else if (this.phase === 'wrong') {
       drawPrompt(ctx, '再试试吧', width / 2, height - 45, 0.4);
-    } else if (this.phase === 'success') {
+    } else if (this.phase === 'successHold' || this.phase === 'routeFadeOut') {
       drawPrompt(ctx, '找到了！要赶紧去接她……', width / 2, height - 45, 0.4);
+    } else if (this.phase === 'cityFlashback') {
+      drawPrompt(ctx, '记忆的碎片拼合在一起……', width / 2, height - 45, 0.4);
     }
   }
 
   drawHoverNode(ctx) {
-    if (!this.hoveredNode || this.phase === 'success' || this._completed) return;
+    if (!this.hoveredNode || this.phase === 'successHold' || this._completed) return;
 
     let node = MAZE_CONFIG.nodes.find(n => n.id === this.hoveredNode);
     let isDecoy = false;
@@ -224,11 +248,11 @@ export class Chapter03 {
     }
   }
 
-  drawPlayerLine(ctx) {
+  drawPlayerLine(ctx, lineAlpha = 1) {
     if (this.points.length < 2) return;
 
     const isWrong = this.phase === 'wrong';
-    const alpha = isWrong ? Math.max(0, 1 - this.phaseTime / 0.8) : 1;
+    const alpha = (isWrong ? Math.max(0, 1 - this.phaseTime / 0.8) : 1) * lineAlpha;
 
     ctx.save();
     ctx.globalAlpha = alpha;

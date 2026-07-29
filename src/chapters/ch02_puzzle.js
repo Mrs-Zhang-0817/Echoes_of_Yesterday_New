@@ -1,5 +1,6 @@
 import { DEFAULT_PUZZLE_LAYOUT, createPuzzlePieces, ejectPiecesBlockingTarget, getTopmostPieceAt, pathPassesNearTarget, snapPieceToTarget } from '../utils/puzzleLayout.js';
 import { drawPrompt, roundedRect } from '../utils/sceneUtils.js';
+import { FlashbackActivity } from '../narrative/FlashbackActivity.js';
 
 // 离屏 Canvas 预生成灰度版本（替代 ctx.filter）
 function createGrayscaleImage(image) {
@@ -18,6 +19,10 @@ function createGrayscaleImage(image) {
   return canvas;
 }
 
+// Ch2 成功状态顺序（用于测试与叙事衔接一致性校验）
+export const CH2_SUCCESS_STATES = ['completeHold', 'puzzleFadeOut', 'flashback', 'complete'];
+const CH2_FLASHBACK_FRAMES = ['ch2_flashback_01', 'ch2_flashback_02', 'ch2_flashback_03', 'ch2_flashback_04', 'ch2_flashback_05'];
+
 export class Chapter02 {
   constructor(game) {
     this.game = game;
@@ -31,6 +36,7 @@ export class Chapter02 {
     this.phase = 'playing';
     this.phaseTime = 0;
     this._completed = false;
+    this.flashback = null;
     this.dragThreshold = 5;
     this.hasMoved = false;
   }
@@ -182,15 +188,28 @@ export class Chapter02 {
     if (this.phase === 'completeHold') {
       this.phaseTime += dt;
       if (this.phaseTime >= 3) {
-        this.phase = 'fadeMemory';
+        this.phase = 'puzzleFadeOut';
         this.phaseTime = 0;
       }
-    } else if (this.phase === 'fadeMemory') {
+    } else if (this.phase === 'puzzleFadeOut') {
       this.phaseTime += dt;
-      if (this.phaseTime >= 2 && !this._completed) {
-        this._completed = true;
-        this.game.progress.markChapterComplete(2, 15);
+      if (this.phaseTime >= 1.5) {
+        this.phase = 'flashback';
+        this.phaseTime = 0;
+        this.flashback = new FlashbackActivity(this.game);
+        this.flashback.start({
+          frames: CH2_FLASHBACK_FRAMES,
+          perFrame: 1.0,
+          crossfade: 0.45,
+          onComplete: () => {
+            this._completed = true;
+            this.game.progress.markChapterComplete(2, 15);
+            this.phase = 'complete';
+          },
+        });
       }
+    } else if (this.phase === 'flashback') {
+      this.flashback?.update(dt);
     }
   }
 
@@ -206,45 +225,45 @@ export class Chapter02 {
     ctx.fillRect(0, 0, width, height);
     ctx.restore();
 
-    this.drawGrid(ctx);
-    const fading = this.phase === 'fadeMemory' ? Math.min(1, this.phaseTime / 2) : 0;
-    for (const piece of this.pieces) {
-      if (piece.placed) {
-        this.drawPiece(ctx, piece, 1 - fading * 0.7);
-      } else {
-        ctx.save();
-        if (piece.dragging || piece.highlight > 0.05) {
-          ctx.shadowColor = piece.dragging ? 'rgba(0, 0, 0, 0.65)' : 'rgba(255, 211, 122, 0.75)';
-          ctx.shadowBlur = piece.dragging ? 9 : 18 * piece.highlight;
-          ctx.shadowOffsetX = piece.dragging ? 4 : 0;
-          ctx.shadowOffsetY = piece.dragging ? 5 : 0;
+    // 拼图呈现阶段：playing / completeHold 显示完整，puzzleFadeOut 淡出到 0
+    let puzzleAlpha = 1;
+    if (this.phase === 'puzzleFadeOut') puzzleAlpha = Math.max(0, 1 - this.phaseTime / 1.5);
+    const showPuzzle = this.phase === 'playing' || this.phase === 'completeHold' || this.phase === 'puzzleFadeOut';
+
+    if (showPuzzle && puzzleAlpha > 0) {
+      this.drawGrid(ctx, puzzleAlpha);
+      for (const piece of this.pieces) {
+        if (piece.placed) {
+          this.drawPiece(ctx, piece, 1, puzzleAlpha);
+        } else {
+          ctx.save();
+          if (piece.dragging || piece.highlight > 0.05) {
+            ctx.shadowColor = piece.dragging ? 'rgba(0, 0, 0, 0.65)' : 'rgba(255, 211, 122, 0.75)';
+            ctx.shadowBlur = piece.dragging ? 9 : 18 * piece.highlight;
+            ctx.shadowOffsetX = piece.dragging ? 4 : 0;
+            ctx.shadowOffsetY = piece.dragging ? 5 : 0;
+          }
+          this.drawPiece(ctx, piece, piece.dragging ? 0.7 : 0.25 + piece.highlight * 0.55, puzzleAlpha);
+          ctx.restore();
         }
-        this.drawPiece(ctx, piece, piece.dragging ? 0.7 : 0.25 + piece.highlight * 0.55);
-        ctx.restore();
       }
     }
     this.drawParticles(ctx);
 
-    // 完成拼图后以正式闪回序列替代原来的纯色淡出。
-    if (this.phase === 'completeHold' || this.phase === 'fadeMemory') {
-      const frame = Math.min(5, Math.floor(this.phaseTime * 1.7) + 1);
-      const image = this.game.images[`ch2_flashback_0${frame}`];
-      if (image) {
-        ctx.save();
-        ctx.globalAlpha = this.phase === 'fadeMemory' ? Math.min(1, this.phaseTime / 0.35) : 0.32;
-        ctx.drawImage(image, 0, 0, width, height);
-        ctx.restore();
-      }
+    // 闪回阶段由 FlashbackActivity 统一驱动（缓动交叉淡入，非硬切）
+    if (this.phase === 'flashback') {
+      this.flashback?.render(ctx, width, height);
     }
 
     const panel = DEFAULT_PUZZLE_LAYOUT.panel;
     if (this.phase === 'completeHold') drawPrompt(ctx, '记忆恢复了一些……', width / 2, 55, 0.6);
-    else if (this.phase === 'fadeMemory') drawPrompt(ctx, '但那抹色彩，终究会慢慢褪去……', width / 2, 55, 0.35);
-    else drawPrompt(ctx, '将拼图碎片拖到正确的位置', width / 2, panel.y + panel.height + 37, 0);
+    else if (this.phase === 'puzzleFadeOut') drawPrompt(ctx, '但那抹色彩，终究会慢慢褪去……', width / 2, 55, 0.35 * puzzleAlpha);
+    else if (this.phase === 'playing') drawPrompt(ctx, '将拼图碎片拖到正确的位置', width / 2, panel.y + panel.height + 37, 0);
   }
 
-  drawPiece(ctx, piece, saturation) {
+  drawPiece(ctx, piece, saturation, alphaMul = 1) {
     const image = this.game.images.puzzle;
+    const a = alphaMul;
     // 使用离屏 Canvas 预生成的灰度图来替代 ctx.filter
     if (saturation < 0.5) {
       if (!piece._grayCache) {
@@ -264,22 +283,24 @@ export class Chapter02 {
         piece._grayCache = grayCanvas;
       }
       // 混合：灰度 → 彩色
-      ctx.globalAlpha = saturation * 2; // 0.25 → 0.5, 0.5 → 1.0
+      ctx.globalAlpha = (saturation * 2) * a; // 0.25 → 0.5, 0.5 → 1.0
+      ctx.drawImage(image, piece.sourceX, piece.sourceY, piece.sourceW, piece.sourceH, piece.x, piece.y, piece.width, piece.height);
+      if (saturation * 2 < 1) {
+        ctx.globalAlpha = (1 - saturation * 2) * a;
+        ctx.drawImage(piece._grayCache, 0, 0, piece.sourceW, piece.sourceH, piece.x, piece.y, piece.width, piece.height);
+      }
+      ctx.globalAlpha = 1;
+    } else {
+      ctx.globalAlpha = a;
       ctx.drawImage(image, piece.sourceX, piece.sourceY, piece.sourceW, piece.sourceH, piece.x, piece.y, piece.width, piece.height);
       ctx.globalAlpha = 1;
-      if (saturation * 2 < 1) {
-        ctx.globalAlpha = 1 - saturation * 2;
-        ctx.drawImage(piece._grayCache, 0, 0, piece.sourceW, piece.sourceH, piece.x, piece.y, piece.width, piece.height);
-        ctx.globalAlpha = 1;
-      }
-    } else {
-      ctx.drawImage(image, piece.sourceX, piece.sourceY, piece.sourceW, piece.sourceH, piece.x, piece.y, piece.width, piece.height);
     }
   }
 
-  drawGrid(ctx) {
+  drawGrid(ctx, alphaMul = 1) {
     const { panel } = DEFAULT_PUZZLE_LAYOUT;
     ctx.save();
+    ctx.globalAlpha = alphaMul;
     roundedRect(ctx, panel.x - 12, panel.y - 12, panel.width + 24, panel.height + 24, 16);
     ctx.fillStyle = 'rgba(255, 242, 210, 0.07)';
     ctx.fill();

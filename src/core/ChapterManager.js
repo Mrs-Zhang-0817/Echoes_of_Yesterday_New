@@ -1,3 +1,5 @@
+import { REPORT_PROGRESS } from '../ui/ArtworkMemoryReport.js';
+
 export class ChapterManager {
   constructor(game) {
     this.game = game;
@@ -61,13 +63,15 @@ export class ChapterManager {
     // 检查是否完成 → 弹 overlay（只弹一次）
     if (this.currentChapter?.isComplete && !this._completeFired && this.transition.phase === 'idle') {
       this._completeFired = true;
+      const chapterNumber = parseInt((this.currentName || 'ch0').replace('ch', ''), 10) || 0;
+      const memoryTo = REPORT_PROGRESS[chapterNumber] ?? 0;
+      const memoryFrom = REPORT_PROGRESS[chapterNumber - 1] ?? 0;
       this.game.overlay?.show?.({
         type: 'complete',
-        title: this.currentChapter.completeTitle || '记忆恢复了一些……',
-        message: this.currentChapter.completeMessage || '',
-        buttons: [
-          { text: '继续下一章节', action: () => this.next() }
-        ]
+        chapterNumber,
+        memoryFrom,
+        memoryTo,
+        onContinue: () => this.next(),
       });
       this.transition.phase = 'blocked';
     }

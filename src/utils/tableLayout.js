@@ -55,11 +55,24 @@ export const SCENT_PARTICLES = [
 export const GATING_CONFIG = Object.freeze({
   comfortTime: 3.0,        // Gating1 抚摸所需总秒数
   comfortDecay: 0.3,       // 离开时每秒衰减
-  magnetRadius: 70,        // Gating2 粒子吸附半径
-  targetRadius: 45,        // 目标残影判定半径
+  magnetRadius: 70,        // Gating2 粒子吸附半径（旧）
+  targetRadius: 45,        // 目标残影判定半径（旧）
   particleSpeed: 100,      // 粒子吸附移动速度
   steamCount: 12,          // 蒸汽粒子数
+  velocityDamping: 0.86,   // 被吸引粒子的速度阻尼系数
 });
+
+/**
+ * 粒子吸附（吸引）半径：手指进入此半径内粒子开始被牵引。
+ * 需 ≥ 110，比旧 magnetRadius 更大，提升交互宽容度。
+ */
+export const attractRadius = 120;
+
+/**
+ * 命中后锁定半径：粒子进入目标此半径即被锁定（targetLock），
+ * 吸附后不再漂走，避免暴露碗底棕色。需 ≥ 55。
+ */
+export const targetLockRadius = 60;
 
 /**
  * 检测点是否在碗的椭圆热区内

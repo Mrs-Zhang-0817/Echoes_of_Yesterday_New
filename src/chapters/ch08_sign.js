@@ -91,9 +91,13 @@ export class Chapter08 {
     }
 
     this.MAX_ATTEMPTS = 5;
-    this.PASS_SCORE = 80;
+    this.PASS_SCORE = 60;
     this.TIMEOUT_SEC = 10;
     this._completed = false;
+
+    // 带标签但「非激活」的摄像头占位（绝不调用 getUserMedia / 不请求摄像头权限）
+    this.cameraPlaceholderRect = { x: 40, y: 40, w: 150, h: 96 };
+    this.swipeDetected = false;
 
     // 缩放参数
     const imgW = 1448, imgH = 1086;
@@ -162,6 +166,12 @@ export class Chapter08 {
       const type = classifyStroke(this.cur);
       const { deformed } = deformStroke(this.cur, type);
       this.strokes.push({ raw: [...this.cur], deformed, type });
+      // (b) 滑动手势回退：单笔长划（横扫屏幕）即视为「我已签下」的兜底手势
+      let pathLen = 0;
+      for (let i = 1; i < this.cur.length; i++) {
+        pathLen += Math.hypot(this.cur[i].x - this.cur[i - 1].x, this.cur[i].y - this.cur[i - 1].y);
+      }
+      if (pathLen > 700) this.swipeDetected = true;
     }
     this.cur = [];
   }
@@ -207,11 +217,11 @@ export class Chapter08 {
   }
 
   submit() {
-    if (this.passed || this.strokes.length < 5) return;
+    if (this.passed || (this.strokes.length < 5 && !this.swipeDetected)) return;
     if (this.matchSignature()) {
       this.passed = true;
       this._completed = true;
-      this.game.progress.markChapterComplete(8, 72);
+      this.game.progress.markChapterComplete(8, 85);
       try { navigator.vibrate?.(15); } catch {}
       return;
     }
@@ -224,12 +234,25 @@ export class Chapter08 {
 
   matchSignature() {
     const all = this.strokes.map(s => s.raw);
+
+    // (b) 滑动手势回退：检测到长划手势直接通过
+    if (this.swipeDetected) return true;
+
     if (all.length < 6) return false;
     const zones = [[], []];
     for (const pts of all) {
       zones[Math.min(1, Math.floor((avg(pts.map(p => p.x)) / this.DW) * 2))].push(pts);
     }
     if (zones[0].length < 3 || zones[1].length < 3) return false;
+
+    // (a) 宽泛笔迹启发式：笔画数 + 双区覆盖面积，宽松判定即视为「向阳」两字
+    if (all.length >= 6 && zones[0].length >= 2 && zones[1].length >= 2) {
+      // 覆盖区域：左右两区都有足够笔迹 => 满足宽松通关
+      const bb0 = bbox(zones[0].flat());
+      const bb1 = bbox(zones[1].flat());
+      if (bb0.w >= 40 && bb0.h >= 30 && bb1.w >= 40 && bb1.h >= 30) return true;
+    }
+
     let sc = 0;
     let z0h = false, z0v = false, z0f = false;
     for (const pts of zones[0]) {
@@ -267,6 +290,7 @@ export class Chapter08 {
     this.timeoutActive = false;
     this.timeoutFired = false;
     this.showHint = false;
+    this.swipeDetected = false;
     this._completed = false;
     this.phase = 'sign';
     this.phaseTime = 0;
@@ -333,6 +357,40 @@ export class Chapter08 {
     // 完成弹层由 ChapterManager 统一处理
   }
 
+  // 带标签的「非激活」摄像头占位：仅绘制 UI，绝不调用 getUserMedia / 不请求摄像头权限
+  drawCameraPlaceholder(ctx) {
+    const { x, y, w, h } = this.cameraPlaceholderRect;
+    ctx.save();
+    // 外框（暗色，表示未启用）
+    roundedRect(ctx, x, y, w, h, 10);
+    ctx.fillStyle = 'rgba(20, 24, 30, 0.55)';
+    ctx.fill();
+    ctx.lineWidth = 2;
+    ctx.strokeStyle = 'rgba(150, 160, 170, 0.5)';
+    ctx.stroke();
+
+    // 镜头（带斜杠，表示禁用）
+    const cx = x + w / 2, cy = y + h / 2 - 6;
+    const r = 22;
+    ctx.beginPath();
+    ctx.arc(cx, cy, r, 0, Math.PI * 2);
+    ctx.strokeStyle = 'rgba(170, 180, 190, 0.7)';
+    ctx.lineWidth = 3;
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(cx - r * 0.7, cy - r * 0.7);
+    ctx.lineTo(cx + r * 0.7, cy + r * 0.7);
+    ctx.stroke();
+
+    // 标签
+    ctx.fillStyle = 'rgba(200, 210, 220, 0.9)';
+    ctx.font = '14px system-ui, "PingFang SC", sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('摄像头（未启用）', cx, y + h - 14);
+    ctx.restore();
+  }
+
   renderSign(ctx) {
     // 优先使用走廊场景底图作为背景
     const bg = this.game.images.ch8_corridor;
@@ -353,6 +411,9 @@ export class Chapter08 {
       ctx.drawImage(smile, this.DW * 0.72, this.DH * 0.12, 150, 200);
       ctx.restore();
     }
+
+    // 带标签但「非激活」的摄像头占位（绝不请求摄像头权限）
+    this.drawCameraPlaceholder(ctx);
 
     const img = this.game.images.sign;
     if (!img) return;

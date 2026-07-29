@@ -1,4 +1,5 @@
-// Ch7 惊悚夜醒——在黑暗中摸到门锁
+// Ch7 惊悚夜醒——黑暗中摸到门锁（叙事可读链路 + 宽松通关）
+// 状态机：nightNarrative → socialLights → flashlightSearch → hallucinationClear → doorOpen → complete
 
 import { drawPrompt, roundedRect } from '../utils/sceneUtils.js';
 
@@ -9,7 +10,7 @@ function vibe(ms) {
 export class Chapter07 {
   constructor(game) {
     this.game = game;
-    this.phase = 'narrative';
+    this.phase = 'nightNarrative';
     this.phaseTime = 0;
     this._complete = false;
     this.time = 0;
@@ -38,13 +39,29 @@ export class Chapter07 {
     this.timeoutRevealed = false;
     this.moonHintShown = false;
 
-    // 叙事文本
+    // 叙事文本（narrative 阶段用，socialLights 阶段改用 Canvas 气泡，避免文字堆砌）
     this.narrativeLines = [
       '深夜，不知是几点。',
       '黑暗中，只有自己的呼吸声。',
-      '什么都看不见……只能用手去摸索。',
+      '白天的信息、朋友的光，都远了……',
       '需要找到那个熟悉的东西……',
     ];
+
+    // 社交气泡（朋友圈 / 灯光气泡飘动）—— socialLights 阶段绘制
+    this.socialBubbles = [];
+    const bubbleLabels = ['👍', '💬', '🏠', '🌟', '☀️', '🌙', '📷', '✨', '🔔', '❤️'];
+    for (let i = 0; i < 12; i++) {
+      this.socialBubbles.push({
+        x: 120 + Math.random() * 1040,
+        y: 740 + Math.random() * 200,
+        r: 14 + Math.random() * 20,
+        vy: 22 + Math.random() * 30,
+        sway: Math.random() * Math.PI * 2,
+        swaySpeed: 0.6 + Math.random() * 1.2,
+        hue: 20 + Math.random() * 40, // 暖色灯光
+        label: bubbleLabels[i % bubbleLabels.length],
+      });
+    }
 
     // 完成动画参数
     this.openProgress = 0;
@@ -74,41 +91,49 @@ export class Chapter07 {
 
   handleDown(point) {
     try {
-      if (this.phase === 'narrative') {
-        if (this.phaseTime > 1.0) {
-          this.phase = 'searching';
-          this.phaseTime = 0;
+      switch (this.phase) {
+        case 'nightNarrative':
+          if (this.phaseTime > 1.0) this._goto('socialLights');
+          return;
+
+        case 'socialLights':
+          // 任意点击/触摸直接推进到手电搜索
+          this._goto('flashlightSearch');
+          return;
+
+        case 'flashlightSearch': {
           this.fingerX = point.x;
           this.fingerY = point.y;
           this.fingerActive = true;
-        }
-        return;
-      }
 
-      if (this.phase === 'searching') {
-        this.fingerX = point.x;
-        this.fingerY = point.y;
-        this.fingerActive = true;
+          // 超时后任意点击即开门
+          if (this.timeoutRevealed) {
+            this._goto('hallucinationClear');
+            return;
+          }
 
-        // 超时后任意点击即开门
-        if (this.timeoutRevealed) {
-          this._openDoor();
+          // 手指非常接近门锁时点击 → 找到门锁，进入「幻觉散去」
+          const dist = Math.hypot(point.x - this.lockX, point.y - this.lockY);
+          if (dist < 35) {
+            vibe(50);
+            this._goto('hallucinationClear');
+          }
           return;
         }
 
-        // 手指非常接近门锁时点击 → 开门
-        const dist = Math.hypot(point.x - this.lockX, point.y - this.lockY);
-        if (dist < 35) {
-          this._openDoor();
-          vibe(50);
-        }
-        return;
+        case 'hallucinationClear':
+          // 点击直接确认幻觉散去，进入开门
+          this._goto('doorOpen');
+          return;
+
+        default:
+          return;
       }
     } catch (e) { console.error('Ch07 handleDown:', e); }
   }
 
   handleMove(point) {
-    if (this.phase === 'searching') {
+    if (this.phase === 'flashlightSearch') {
       this.fingerX = point.x;
       this.fingerY = point.y;
     }
@@ -122,10 +147,9 @@ export class Chapter07 {
     this.fingerActive = false;
   }
 
-  _openDoor() {
-    this.phase = 'found';
+  _goto(phase) {
+    this.phase = phase;
     this.phaseTime = 0;
-    vibe(100);
   }
 
   // ============ 辅助方法 ============
@@ -149,14 +173,21 @@ export class Chapter07 {
     this.phaseTime += dt;
 
     switch (this.phase) {
-      case 'narrative':
-        if (this.phaseTime >= 5) {
-          this.phase = 'searching';
-          this.phaseTime = 0;
-        }
+      case 'nightNarrative':
+        if (this.phaseTime >= 5) this._goto('socialLights');
         break;
 
-      case 'searching':
+      case 'socialLights':
+        // 朋友圈 / 灯光气泡飘动推进
+        for (const b of this.socialBubbles) {
+          b.y -= b.vy * dt;
+          b.sway += b.swaySpeed * dt;
+          if (b.y < -40) { b.y = 760; b.x = 120 + Math.random() * 1040; }
+        }
+        if (this.phaseTime >= 6) this._goto('flashlightSearch');
+        break;
+
+      case 'flashlightSearch':
         // 60s 超时兜底机制
         if (this.phaseTime > 50) {
           this.warmLightProgress = Math.min(1, (this.phaseTime - 50) / 10);
@@ -170,12 +201,16 @@ export class Chapter07 {
         }
         break;
 
-      case 'found':
+      case 'hallucinationClear':
+        // 幻觉在数秒内散去，随后进入开门
+        if (this.phaseTime >= 3.0) this._goto('doorOpen');
+        break;
+
+      case 'doorOpen':
         this.openProgress = Math.min(1, this.phaseTime / 1.0);
         if (this.phaseTime >= 1.0 && !this._complete) {
           this._complete = true;
-          this.phase = 'complete';
-          this.phaseTime = 0;
+          this._goto('complete');
           // P1-1 修复：原本缺失存档调用，导致 ch07 进度不落库、刷新回退、报告页永远未完成
           this.game.progress.markChapterComplete(7, 60);
         }
@@ -207,14 +242,20 @@ export class Chapter07 {
     const { width, height } = this.game;
 
     switch (this.phase) {
-      case 'narrative':
+      case 'nightNarrative':
         this.renderNarrative(ctx);
         break;
-      case 'searching':
+      case 'socialLights':
+        this.renderSocialLights(ctx);
+        break;
+      case 'flashlightSearch':
         this.renderSearching(ctx);
         break;
-      case 'found':
-        this.renderFound(ctx);
+      case 'hallucinationClear':
+        this.renderHallucinationClear(ctx);
+        break;
+      case 'doorOpen':
+        this.renderDoorOpen(ctx);
         break;
       case 'complete':
         /* overlay 处理 */
@@ -225,7 +266,7 @@ export class Chapter07 {
     }
   }
 
-  // ---------- 叙事开场 ----------
+  // ---------- 叙事开场（夜醒） ----------
 
   renderNarrative(ctx) {
     const { width, height } = this.game;
@@ -257,7 +298,45 @@ export class Chapter07 {
     ctx.restore();
   }
 
-  // ---------- 搜索阶段 ----------
+  // ---------- 社交气泡阶段（朋友圈 / 灯光飘动，替代文字堆砌） ----------
+
+  renderSocialLights(ctx) {
+    const { width, height } = this.game;
+    const bedroom = this.game.images.ch7_bg_bedroom_night;
+    if (bedroom) { ctx.drawImage(bedroom, 0, 0, width, height); ctx.fillStyle = 'rgba(3, 4, 8, 0.86)'; ctx.fillRect(0, 0, width, height); }
+    else { ctx.fillStyle = '#0a0806'; ctx.fillRect(0, 0, width, height); }
+
+    ctx.save();
+    for (const b of this.socialBubbles) {
+      const sx = b.x + Math.sin(b.sway) * 18;
+      const alpha = 0.5 + 0.5 * Math.sin(b.sway * 0.8);
+      // 柔和灯光光晕
+      const glow = ctx.createRadialGradient(sx, b.y, 0, sx, b.y, b.r * 2.2);
+      glow.addColorStop(0, `hsla(${b.hue}, 80%, 70%, ${0.30 * alpha})`);
+      glow.addColorStop(1, `hsla(${b.hue}, 80%, 70%, 0)`);
+      ctx.fillStyle = glow;
+      ctx.beginPath();
+      ctx.arc(sx, b.y, b.r * 2.2, 0, Math.PI * 2);
+      ctx.fill();
+      // 气泡主体
+      ctx.fillStyle = `hsla(${b.hue}, 70%, 88%, ${0.85 * alpha})`;
+      ctx.beginPath();
+      ctx.arc(sx, b.y, b.r, 0, Math.PI * 2);
+      ctx.fill();
+      // 气泡上的小图标（emoji 代表朋友圈互动）
+      ctx.fillStyle = `rgba(40, 24, 12, ${0.9 * alpha})`;
+      ctx.font = `${Math.round(b.r * 1.1)}px system-ui, "PingFang SC", sans-serif`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(b.label, sx, b.y);
+    }
+    ctx.restore();
+
+    // 阶段提示（单行，不堆砌）
+    drawPrompt(ctx, '白天的信息还亮着，却照不进这间屋子', width / 2, height - 50, 0);
+  }
+
+  // ---------- 搜索阶段（手电筒） ----------
 
   renderSearching(ctx) {
     const { width, height } = this.game;
@@ -450,9 +529,36 @@ export class Chapter07 {
     ctx.restore();
   }
 
-  // ---------- 开门动画 ----------
+  // ---------- 幻觉散去阶段（ch7_hallucination_shadow） ----------
 
-  renderFound(ctx) {
+  renderHallucinationClear(ctx) {
+    const { width, height } = this.game;
+
+    const bedroom = this.game.images.ch7_bg_bedroom_night;
+    if (bedroom) { ctx.drawImage(bedroom, 0, 0, width, height); ctx.fillStyle = 'rgba(3, 4, 8, 0.9)'; ctx.fillRect(0, 0, width, height); }
+    else { ctx.fillStyle = '#0a0806'; ctx.fillRect(0, 0, width, height); }
+
+    // 幻觉阴影：随时间淡出（被「看清」后散去）
+    const shadow = this.game.images.ch7_hallucination_shadow;
+    const fade = Math.max(0, 1 - this.phaseTime / 2.6);
+    if (shadow && fade > 0) {
+      ctx.save();
+      ctx.globalAlpha = fade * 0.85;
+      // 轻微晃动，表现幻觉的不稳定
+      const wob = Math.sin(this.time * 3) * 6;
+      ctx.drawImage(shadow, width / 2 - 120 + wob, height / 2 - 160, 240, 320);
+      ctx.restore();
+    }
+
+    ctx.save();
+    ctx.globalAlpha = Math.min(1, this.phaseTime / 0.6);
+    drawPrompt(ctx, '那不是真的……幻影散去了', width / 2, height - 60, 0.2);
+    ctx.restore();
+  }
+
+  // ---------- 开门动画（ch7_door_lock） ----------
+
+  renderDoorOpen(ctx) {
     const { width, height } = this.game;
 
     // 暖光从门锁扩散
@@ -478,10 +584,16 @@ export class Chapter07 {
     ctx.save();
     const lockFade = Math.max(0, 1 - progress * 2);
     if (lockFade > 0) {
-      ctx.fillStyle = `rgba(196, 160, 96, ${lockFade})`;
-      ctx.beginPath();
-      ctx.arc(this.lockX, this.lockY, 18, 0, Math.PI * 2);
-      ctx.fill();
+      const lock = this.game.images.ch7_door_lock;
+      if (lock) {
+        ctx.globalAlpha = lockFade;
+        ctx.drawImage(lock, this.lockX - 30, this.lockY - 50, 60, 100);
+      } else {
+        ctx.fillStyle = `rgba(196, 160, 96, ${lockFade})`;
+        ctx.beginPath();
+        ctx.arc(this.lockX, this.lockY, 18, 0, Math.PI * 2);
+        ctx.fill();
+      }
     }
     ctx.restore();
 
