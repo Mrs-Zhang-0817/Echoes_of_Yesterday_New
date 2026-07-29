@@ -8,6 +8,8 @@ import { Overlay } from './core/Overlay.js';
 
 import { Chapter02 } from './chapters/ch02_puzzle.js';
 import { Chapter03 } from './chapters/ch03_maze.js';
+import { Chapter05 } from './chapters/ch05_door.js';
+import { Chapter06 } from './chapters/ch06_table.js';
 import { Chapter08 } from './chapters/ch08_sign.js';
 
 const DESIGN_W = 1280;
@@ -96,9 +98,11 @@ async function boot() {
     game.overlay = new Overlay(game);
     game.chapterManager = new ChapterManager(game);
 
-    // 注册章节
+    // 注册章节（Ch1/4/7/9/10 占位，后续实现）
     game.chapterManager.register('ch02', Chapter02);
     game.chapterManager.register('ch03', Chapter03);
+    game.chapterManager.register('ch05', Chapter05);
+    game.chapterManager.register('ch06', Chapter06);
     game.chapterManager.register('ch08', Chapter08);
 
     window.game = game;

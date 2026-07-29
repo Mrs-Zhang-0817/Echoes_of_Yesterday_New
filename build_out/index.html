@@ -671,6 +671,211 @@ function pathPassesNearTarget(fromX, fromY, toX, toY, targetX, targetY, radius) 
 }
 
 
+// ---- src/utils/returnNightLayout.js ----
+// Ch5 归家迷途 — 布局参数和配置常量
+
+// ====== Gating 1：声相定位（寻找单元门） ======
+
+/**
+ * 三个声源配置
+ * angle: 在 360° 全景中的角度（0=正中偏左, 180=右）
+ * screenBaseX: 在屏幕上大致的基准 X 位置（用于渲染波形）
+ * y: 在屏幕上的 Y 位置
+ */
+const SOUND_SOURCES = [
+  {
+    id: 'chopping',
+    angle: 45,
+    screenBaseX: 220,
+    y: 280,
+    label: '切菜声',
+    hint: '咚咚咚……像是有人在切菜',
+    color: '#ffa94d',
+    found: false,
+    lockProgress: 0,
+    wavePhase: 0,
+  },
+  {
+    id: 'tv',
+    angle: 150,
+    screenBaseX: 640,
+    y: 250,
+    label: '电视声',
+    hint: '新闻联播的前奏曲……',
+    color: '#74c0fc',
+    found: false,
+    lockProgress: 0,
+    wavePhase: 1.2,
+  },
+  {
+    id: 'chat',
+    angle: 290,
+    screenBaseX: 1020,
+    y: 310,
+    label: '聊天声',
+    hint: '熟悉的乡音在夜空中飘荡……',
+    color: '#b197fc',
+    found: false,
+    lockProgress: 0,
+    wavePhase: 2.5,
+  },
+];
+
+const GATING1_CONFIG = Object.freeze({
+  focusRadius: 60,        // 像素 — 距离声源多远算"对准"
+  dwellTime: 1.8,         // 秒 — 对准后需要按住多长时间锁定
+  waveBars: 24,           // 波形条数量
+  maxBarHeight: 70,       // 波形条最大高度
+  scanSpeed: 0.8,         // 每像素移动的角度变化系数
+  dragDeadZone: 4,        // 拖拽死区（像素）
+});
+
+// ====== Gating 2：电梯按钮迷宫 ======
+
+const ELEVATOR_CONFIG = Object.freeze({
+  panelX: 440,
+  panelY: 130,
+  panelWidth: 400,
+  panelHeight: 460,
+  cols: 3,
+  rows: 2,
+  btnW: 100,
+  btnH: 80,
+  btnGap: 24,
+  correctIndex: 5,        // 正确答案在 buttons 数组中的索引（0-based），与 hasSunflower 对应
+  sunflowerPetals: 8,
+  sunflowerRadius: 42,
+  petalLen: 12,
+  petalWidth: 5,
+});
+
+/**
+ * 六个电梯按钮的扭曲参数
+ * label: 数字
+ * rotation: 旋转角度（度）
+ * scaleX/Y: 非均匀缩放
+ * offsetX/Y: 位置偏移
+ * hasSunflower: 是否有向日葵花瓣线索
+ */
+const ELEVATOR_BUTTONS = [
+  { label: '1', rotation: 35,  scaleX: 1.3, scaleY: 0.7,  offsetX: 8,  offsetY: -5,  hasSunflower: false },
+  { label: '2', rotation: -28, scaleX: 0.7, scaleY: 1.4,  offsetX: -6, offsetY: 8,   hasSunflower: false },
+  { label: '3', rotation: 12,  scaleX: 1.1, scaleY: 1.1,  offsetX: 3,  offsetY: 3,   hasSunflower: false },
+  { label: '4', rotation: -40, scaleX: 1.3, scaleY: 0.65, offsetX: -8, offsetY: -7,  hasSunflower: false },
+  { label: '5', rotation: 22,  scaleX: 0.6, scaleY: 1.3,  offsetX: 4,  offsetY: -4,  hasSunflower: false },
+  { label: '6', rotation: -15, scaleX: 1.2, scaleY: 0.8,  offsetX: -3, offsetY: 5,   hasSunflower: true },
+];
+
+/**
+ * 计算 Gating 1 中声源在屏幕上的活跃度
+ * @param {number} scanPos — 当前扫描位置 (0-1280)
+ * @param {number} sourceX — 声源基准 X
+ * @returns {number} 0~1 的活跃度
+ */
+function getSourceLoudness(scanPos, sourceX) {
+  const dist = Math.abs(scanPos - sourceX);
+  if (dist < GATING1_CONFIG.focusRadius) {
+    return 1 - dist / GATING1_CONFIG.focusRadius;
+  }
+  return 0;
+}
+
+/**
+ * 计算 Gating 2 中每个按钮在屏幕上的矩形区域
+ * @param {number} i — 按钮索引
+ * @returns {{ x, y, w, h }}
+ */
+function getButtonRect(i) {
+  const cfg = ELEVATOR_CONFIG;
+  const col = i % cfg.cols;
+  const row = Math.floor(i / cfg.cols);
+  const x = cfg.panelX + col * (cfg.btnW + cfg.btnGap) + cfg.btnGap / 2;
+  const y = cfg.panelY + row * (cfg.btnH + cfg.btnGap) + cfg.btnGap / 2;
+  return { x, y, w: cfg.btnW, h: cfg.btnH };
+}
+
+
+// ---- src/utils/tableLayout.js ----
+// Ch6 餐桌上的博弈 — 布局参数和配置常量
+
+// ====== Gating 1：触觉与热量感知 ======
+
+/** 碗的椭圆绘制参数 */
+const BOWL = Object.freeze({
+  cx: 640, cy: 400,
+  rx: 180, ry: 90,
+  innerRx: 150, innerRy: 70,
+});
+
+/** 面板收集进度显示 */
+const COLLECTION_PANEL = Object.freeze({
+  x: 40, y: 40,
+  iconSize: 28,
+  gap: 12,
+});
+
+// ====== Gating 2：气味拼图 ======
+
+/** 三种香气粒子的配置 */
+const SCENT_PARTICLES = [
+  {
+    id: 'soy',
+    label: '酱油香',
+    color: '#8B4513',
+    glowColor: 'rgba(139,69,19,0.3)',
+    count: 18,
+    sourceX: 960, sourceY: 120,
+    targetX: 500, targetY: 360,
+    collected: false,
+  },
+  {
+    id: 'onion',
+    label: '葱花香',
+    color: '#4CAF50',
+    glowColor: 'rgba(76,175,80,0.3)',
+    count: 15,
+    sourceX: 180, sourceY: 100,
+    targetX: 640, targetY: 340,
+    collected: false,
+  },
+  {
+    id: 'egg',
+    label: '煎蛋香',
+    color: '#FFD700',
+    glowColor: 'rgba(255,215,0,0.3)',
+    count: 20,
+    sourceX: 640, sourceY: 640,
+    targetX: 780, targetY: 380,
+    collected: false,
+  },
+];
+
+const GATING_CONFIG = Object.freeze({
+  comfortTime: 3.0,        // Gating1 抚摸所需总秒数
+  comfortDecay: 0.3,       // 离开时每秒衰减
+  magnetRadius: 70,        // Gating2 粒子吸附半径
+  targetRadius: 45,        // 目标残影判定半径
+  particleSpeed: 100,      // 粒子吸附移动速度
+  steamCount: 12,          // 蒸汽粒子数
+});
+
+/**
+ * 检测点是否在碗的椭圆热区内
+ */
+function hitBowl(x, y) {
+  const dx = (x - BOWL.cx) / BOWL.rx;
+  const dy = (y - BOWL.cy) / BOWL.ry;
+  return dx * dx + dy * dy <= 1;
+}
+
+/**
+ * 计算粒子与目标中心距离
+ */
+function distToTarget(px, py, target) {
+  return Math.hypot(px - target.targetX, py - target.targetY);
+}
+
+
 // ---- src/chapters/ch03_mazeLayout.js ----
 // Ch3 迷宫连线 — 地图配置 & 路径校验
 // 节点数据由标注工具生成
@@ -1337,6 +1542,1743 @@ class Chapter03 {
 }
 
 
+// ---- src/chapters/ch05_door.js ----
+
+
+
+function vibe(ms) {
+  try { navigator.vibrate(ms); } catch (e) { /* 不支持振动 */ }
+}
+
+class Chapter05 {
+  constructor(game) {
+    this.game = game;
+    this.phase = 'narrative';
+    this.phaseTime = 0;
+    this._complete = false;
+    this.time = 0;
+
+    // Gating 1
+    this.scanPos = 640;
+    this.dragging = false;
+    this.dragStartX = 0;
+    this.scanStartX = 640;
+    this.sourcesFound = 0;
+    this.isLocking = false;
+    this.lockTargetIdx = -1;
+    this.sources = SOUND_SOURCES.map(s => ({ ...s, found: false, lockProgress: 0, wavePhase: s.wavePhase }));
+
+    // Gating 2
+    this.hoveredBtn = -1;
+    this.errorTimer = 0;
+    this.errorBtnIdx = -1;
+    this.elevateOffset = 0;
+    this.successFlash = 0;
+    this.lastPressed = -1;
+
+    this.narrativeLines = [
+      '走出警局，坐上了女儿的车。',
+      '窗外的霓虹灯流光溢彩……',
+      '车子驶入了住了几十年的老小区。',
+      '可是在夜色中，这里却像一个巨大的迷宫。',
+    ];
+  }
+
+  get isComplete() { return this._complete; }
+
+  onEnter() {
+    this.game.input.setHandlers({
+      down: point => this.handleDown(point),
+      move: point => this.handleMove(point),
+      up: point => this.handleUp(point),
+      cancel: () => this.handleCancel(),
+    });
+  }
+
+  onExit() {
+    this.game.input.setHandlers();
+  }
+
+  // ============ 输入处理 ============
+
+  handleDown(point) {
+    try {
+      if (this.phase === 'narrative') {
+        if (this.phaseTime > 1.5) {
+          this.phase = 'gating1';
+          this.phaseTime = 0;
+        }
+      } else if (this.phase === 'gating1') {
+        this.dragging = true;
+        this.dragStartX = point.x;
+        this.scanStartX = this.scanPos;
+
+        const idx = this.getNearestSourceIndex();
+        if (idx >= 0 && !this.sources[idx].found) {
+          const loud = getSourceLoudness(this.scanPos, this.sources[idx].screenBaseX);
+          if (loud > 0.3) {
+            this.isLocking = true;
+            this.lockTargetIdx = idx;
+          }
+        }
+      } else if (this.phase === 'gating2') {
+        for (let i = 0; i < ELEVATOR_BUTTONS.length; i++) {
+          const rect = getButtonRect(i);
+          if (point.x >= rect.x && point.x <= rect.x + rect.w &&
+              point.y >= rect.y && point.y <= rect.y + rect.h) {
+            this.handleButtonPress(i);
+            return;
+          }
+        }
+      }
+    } catch (e) { console.error('Ch05 handleDown:', e); }
+  }
+
+  handleMove(point) {
+    if (this.phase === 'gating1' && this.dragging) {
+      const dx = point.x - this.dragStartX;
+      if (Math.abs(dx) > GATING1_CONFIG.dragDeadZone) {
+        this.scanPos = Math.max(0, Math.min(1280, this.scanStartX + dx));
+
+        if (this.isLocking && this.lockTargetIdx >= 0) {
+          const source = this.sources[this.lockTargetIdx];
+          const loud = getSourceLoudness(this.scanPos, source.screenBaseX);
+          if (loud <= 0.1) {
+            this.isLocking = false;
+            this.lockTargetIdx = -1;
+          }
+        }
+      }
+
+      if (!this.isLocking) {
+        const idx = this.getNearestSourceIndex();
+        if (idx >= 0 && !this.sources[idx].found) {
+          const loud = getSourceLoudness(this.scanPos, this.sources[idx].screenBaseX);
+          if (loud > 0.3) {
+            this.isLocking = true;
+            this.lockTargetIdx = idx;
+          }
+        }
+      }
+    }
+  }
+
+  handleUp(_point) {
+    if (this.phase === 'gating1') {
+      this.dragging = false;
+      if (this.isLocking && this.lockTargetIdx >= 0) {
+        const source = this.sources[this.lockTargetIdx];
+        if (source.lockProgress < 1) source.lockProgress = 0;
+      }
+      this.isLocking = false;
+      this.lockTargetIdx = -1;
+    }
+  }
+
+  handleCancel() {
+    this.dragging = false;
+    if (this.isLocking && this.lockTargetIdx >= 0) {
+      this.sources[this.lockTargetIdx].lockProgress = 0;
+    }
+    this.isLocking = false;
+    this.lockTargetIdx = -1;
+  }
+
+  // ============ 辅助方法 ============
+
+  getNearestSourceIndex() {
+    let minDist = Infinity, idx = -1;
+    for (let i = 0; i < this.sources.length; i++) {
+      if (this.sources[i].found) continue;
+      const dist = Math.abs(this.scanPos - this.sources[i].screenBaseX);
+      if (dist < minDist) { minDist = dist; idx = i; }
+    }
+    return idx;
+  }
+
+  handleButtonPress(idx) {
+    if (this.phase !== 'gating2') return;
+    this.lastPressed = idx;
+
+    if (idx === ELEVATOR_CONFIG.correctIndex) {
+      this.phase = 'gating2_elevating';
+      this.phaseTime = 0;
+      this.successFlash = 1;
+      this.elevateOffset = 0;
+      vibe(15);
+    } else {
+      this.errorTimer = 0.4;
+      this.errorBtnIdx = idx;
+      vibe(30);
+    }
+  }
+
+  // ============ update ============
+
+  update(dt) {
+    this.time += dt;
+    this.phaseTime += dt;
+
+    switch (this.phase) {
+      case 'narrative':
+        if (this.phaseTime >= 6) { this.phase = 'gating1'; this.phaseTime = 0; }
+        break;
+
+      case 'gating1':
+        for (const source of this.sources) source.wavePhase += dt * 2.5;
+
+        if (this.isLocking && this.lockTargetIdx >= 0) {
+          const source = this.sources[this.lockTargetIdx];
+          source.lockProgress += dt / GATING1_CONFIG.dwellTime;
+          if (source.lockProgress >= 1) {
+            source.lockProgress = 1;
+            source.found = true;
+            this.sourcesFound++;
+            this.isLocking = false;
+            this.lockTargetIdx = -1;
+            vibe(20);
+
+            if (this.sourcesFound >= 3) {
+              this.phase = 'gating1_celebrate';
+              this.phaseTime = 0;
+            }
+          }
+        }
+        break;
+
+      case 'gating1_celebrate':
+        if (this.phaseTime >= 2) {
+          this.phase = 'gating2';
+          this.phaseTime = 0;
+          this.scanPos = 640;
+        }
+        break;
+
+      case 'gating2':
+        this.hoveredBtn = -1;
+        if (this.errorTimer > 0) this.errorTimer = Math.max(0, this.errorTimer - dt);
+        break;
+
+      case 'gating2_elevating':
+        this.successFlash = Math.max(0, this.successFlash - dt * 1.5);
+        this.elevateOffset += dt * 180;
+        if (this.phaseTime >= 2.5 && !this._complete) {
+          this._complete = true;
+          this.phase = 'complete';
+          this.phaseTime = 0;
+        }
+        break;
+
+      case 'complete':
+        if (this.phaseTime >= 2.5) {
+          this.game.progress.save('ch05_complete', true);
+          this.game.overlay.show({
+            type: 'complete',
+            title: '记忆中……有什么被唤醒了。',
+            message: '记忆解锁 35%',
+            buttons: [
+              { text: '继续下一章节', action: () => this.game.chapterManager.next() }
+            ],
+          });
+        }
+        break;
+    }
+  }
+
+  // ============ render ============
+
+  render(ctx) {
+    try {
+      this._renderSafe(ctx);
+    } catch (e) {
+      console.error('Ch05 render error:', e);
+      ctx.fillStyle = '#0a0806';
+      ctx.fillRect(0, 0, this.game.width, this.game.height);
+      ctx.fillStyle = '#d4b896';
+      ctx.font = '20px system-ui, "PingFang SC", sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText('画面加载异常，请重试', this.game.width / 2, this.game.height / 2);
+    }
+  }
+
+  _renderSafe(ctx) {
+    const { width, height } = this.game;
+    switch (this.phase) {
+      case 'narrative': this.renderNarrative(ctx); break;
+      case 'gating1':
+      case 'gating1_celebrate': this.renderGating1(ctx); break;
+      case 'gating2': this.renderGating2(ctx); break;
+      case 'gating2_elevating': this.renderGating2Elevating(ctx); break;
+      case 'complete': this.renderComplete(ctx); break;
+      default:
+        ctx.fillStyle = '#0a0806';
+        ctx.fillRect(0, 0, width, height);
+    }
+  }
+
+  // ---------- 叙事开场 ----------
+
+  renderNarrative(ctx) {
+    const { width, height } = this.game;
+    ctx.fillStyle = '#0a0806';
+    ctx.fillRect(0, 0, width, height);
+
+    const alpha = Math.min(1, this.phaseTime / 1.5);
+    const textIdx = Math.min(Math.floor(this.phaseTime / 1.2), this.narrativeLines.length - 1);
+
+    ctx.save();
+    ctx.globalAlpha = alpha;
+    ctx.fillStyle = '#d4b896';
+    ctx.font = '500 28px system-ui, "PingFang SC", sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+
+    const chars = Math.floor((this.phaseTime - textIdx * 1.2) / 0.03);
+    ctx.fillText(this.narrativeLines[textIdx].slice(0, Math.min(chars, this.narrativeLines[textIdx].length)), width / 2, height / 2 - 20);
+
+    if (this.phaseTime > 3.5) {
+      ctx.globalAlpha = Math.min(1, (this.phaseTime - 3.5) / 0.8);
+      ctx.fillStyle = '#8a7a6a';
+      ctx.font = '16px system-ui, "PingFang SC", sans-serif';
+      ctx.fillText('点击或触摸继续……', width / 2, height - 60);
+    }
+    ctx.restore();
+  }
+
+  // ---------- Gating 1 ----------
+
+  renderGating1(ctx) {
+    const { width, height } = this.game;
+    this.drawNightSky(ctx, width, height);
+    this.drawBuildingSilhouettes(ctx, width, height);
+    this.drawSoundWaves(ctx);
+    this.drawNoiseOverlay(ctx, width, height);
+    this.drawScanLine(ctx, width, height);
+    this.drawCompass(ctx, width);
+    this.drawLockProgress(ctx);
+
+    if (this.phase === 'gating1_celebrate') this.drawCelebration(ctx, width, height);
+
+    ctx.fillStyle = '#a09080';
+    ctx.font = '16px system-ui, "PingFang SC", sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'bottom';
+    ctx.fillText(`已找到 ${this.sourcesFound} / 3 个声音来源`, width / 2, height - 48);
+
+    if (this.sourcesFound < 3) drawPrompt(ctx, '← 左右拖动，寻找熟悉的声音 →', width / 2, height - 18, 0);
+  }
+
+  drawNightSky(ctx, width, height) {
+    const grad = ctx.createLinearGradient(0, 0, 0, height);
+    grad.addColorStop(0, '#0a0a14');
+    grad.addColorStop(0.4, '#12101e');
+    grad.addColorStop(0.7, '#1a1424');
+    grad.addColorStop(1, '#0d0805');
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, width, height);
+
+    ctx.save();
+    for (let i = 0; i < 30; i++) {
+      const sx = (i * 137.5 + i * i * 0.3) % width;
+      const sy = (i * 89.3 + i * i * 0.7) % (height * 0.4);
+      const size = 0.5 + (i % 3) * 0.5;
+      const twinkle = 0.5 + 0.5 * Math.sin(this.time * (1 + i * 0.1) + i);
+      ctx.fillStyle = `rgba(255,255,255,${twinkle * 0.6})`;
+      ctx.beginPath();
+      ctx.arc(sx, sy, size, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.restore();
+  }
+
+  drawBuildingSilhouettes(ctx, width, height) {
+    ctx.save();
+    const buildings = [
+      { x: 20, w: 120, h: 180, base: 500, seed: 7 },
+      { x: 160, w: 100, h: 220, base: 500, seed: 13 },
+      { x: 340, w: 150, h: 160, base: 500, seed: 23 },
+      { x: 510, w: 130, h: 250, base: 500, seed: 31 },
+      { x: 660, w: 140, h: 190, base: 500, seed: 47 },
+      { x: 840, w: 110, h: 230, base: 500, seed: 53 },
+      { x: 970, w: 130, h: 170, base: 500, seed: 59 },
+      { x: 1120, w: 140, h: 210, base: 500, seed: 61 },
+    ];
+    for (const b of buildings) {
+      ctx.fillStyle = '#0d0a12';
+      ctx.fillRect(b.x, b.base - b.h, b.w, b.h);
+      let s = b.seed;
+      for (let wy = b.base - b.h + 15; wy < b.base - 10; wy += 22) {
+        for (let wx = b.x + 8; wx < b.x + b.w - 8; wx += 18) {
+          s = (s * 1103515245 + 12345) & 0x7fffffff;
+          const bright = (s / 0x7fffffff) * 0.1;
+          if (bright > 0.03) {
+            ctx.fillStyle = `rgba(255, 200, 100, ${Math.min(bright, 0.1)})`;
+            ctx.fillRect(wx, wy, 8, 12);
+          }
+        }
+      }
+    }
+    ctx.restore();
+  }
+
+  drawNoiseOverlay(ctx, width, height) {
+    const roadGrad = ctx.createLinearGradient(0, height - 80, 0, height);
+    roadGrad.addColorStop(0, 'rgba(30, 26, 20, 0)');
+    roadGrad.addColorStop(1, 'rgba(30, 26, 20, 0.6)');
+    ctx.fillStyle = roadGrad;
+    ctx.fillRect(0, height - 80, width, 80);
+
+    const vignette = ctx.createRadialGradient(width / 2, height / 2, 200, width / 2, height / 2, 500);
+    vignette.addColorStop(0, 'rgba(0,0,0,0)');
+    vignette.addColorStop(1, 'rgba(0,0,0,0.4)');
+    ctx.fillStyle = vignette;
+    ctx.fillRect(0, 0, width, height);
+  }
+
+  drawSoundWaves(ctx) {
+    for (let i = 0; i < this.sources.length; i++) {
+      const source = this.sources[i];
+      if (source.found) continue;
+
+      const loud = getSourceLoudness(this.scanPos, source.screenBaseX);
+      const pulse = 0.5 + 0.5 * Math.sin(this.time * 3 + source.wavePhase);
+
+      ctx.save();
+
+      const baseRadius = 8 + loud * 12;
+      const glow = ctx.createRadialGradient(source.screenBaseX, source.y, 0, source.screenBaseX, source.y, baseRadius * 4);
+      glow.addColorStop(0, source.color + '40');
+      glow.addColorStop(0.5, source.color + '15');
+      glow.addColorStop(1, source.color + '00');
+      ctx.fillStyle = glow;
+      ctx.beginPath();
+      ctx.arc(source.screenBaseX, source.y, baseRadius * 4, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.fillStyle = source.color;
+      ctx.globalAlpha = 0.3 + loud * 0.5;
+      ctx.beginPath();
+      ctx.arc(source.screenBaseX, source.y, baseRadius, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.strokeStyle = source.color;
+      ctx.lineWidth = 1.5;
+      for (let r = 0; r < 3; r++) {
+        const ringRadius = 25 + r * 20 + pulse * 10;
+        ctx.globalAlpha = Math.max(0, 0.3 * (1 - r * 0.25)) * (0.4 + loud * 0.6);
+        ctx.beginPath();
+        ctx.arc(source.screenBaseX, source.y, ringRadius, 0, Math.PI * 2);
+        ctx.stroke();
+      }
+
+      if (loud > 0.05) {
+        ctx.globalAlpha = loud * 0.6;
+        const barW = 3, totalW = GATING1_CONFIG.waveBars * (barW + 2);
+        const startX = source.screenBaseX - totalW / 2;
+        for (let b = 0; b < GATING1_CONFIG.waveBars; b++) {
+          const barPhase = (b / GATING1_CONFIG.waveBars) * Math.PI * 2 + this.time * 4 + source.wavePhase;
+          const barH = Math.max(1, Math.sin(barPhase) * GATING1_CONFIG.maxBarHeight * (0.3 + loud * 0.7));
+          ctx.fillStyle = source.color;
+          ctx.globalAlpha = (0.15 + loud * 0.45) * (0.5 + 0.5 * Math.sin(barPhase));
+          ctx.fillRect(startX + b * (barW + 2), source.y + 15, barW, barH);
+          ctx.fillRect(startX + b * (barW + 2), source.y - 15 - barH, barW, barH);
+        }
+      }
+
+      if (loud > 0.2) {
+        ctx.globalAlpha = loud * 0.8;
+        ctx.fillStyle = source.color;
+        ctx.font = '16px system-ui, "PingFang SC", sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'bottom';
+        ctx.fillText(source.label, source.screenBaseX, source.y - baseRadius - 8);
+
+        ctx.fillStyle = '#c0b0a0';
+        ctx.font = '13px system-ui, "PingFang SC", sans-serif';
+        ctx.globalAlpha = loud * 0.5;
+        ctx.fillText(source.hint, source.screenBaseX, source.y - baseRadius - 32);
+      }
+
+      ctx.restore();
+    }
+
+    for (const source of this.sources) {
+      if (!source.found) continue;
+      ctx.save();
+      ctx.fillStyle = '#f0c040';
+      ctx.globalAlpha = 0.4 + 0.3 * Math.sin(this.time * 2);
+      ctx.font = '28px system-ui';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText('✓', source.screenBaseX, source.y);
+
+      ctx.strokeStyle = '#f0c040';
+      ctx.lineWidth = 2;
+      ctx.globalAlpha = 0.2 + 0.15 * Math.sin(this.time * 2.5);
+      ctx.beginPath();
+      ctx.arc(source.screenBaseX, source.y, 18, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.restore();
+    }
+  }
+
+  drawScanLine(ctx, width, height) {
+    ctx.save();
+
+    const scanGrad = ctx.createLinearGradient(this.scanPos - 100, height, this.scanPos, height - 60);
+    scanGrad.addColorStop(0, 'rgba(200, 180, 150, 0)');
+    scanGrad.addColorStop(0.3, 'rgba(200, 180, 150, 0.06)');
+    scanGrad.addColorStop(0.7, 'rgba(200, 180, 150, 0.03)');
+    scanGrad.addColorStop(1, 'rgba(200, 180, 150, 0)');
+    ctx.fillStyle = scanGrad;
+    ctx.beginPath();
+    ctx.moveTo(this.scanPos, height);
+    ctx.lineTo(this.scanPos - 60, height - 100);
+    ctx.lineTo(this.scanPos + 60, height - 100);
+    ctx.closePath();
+    ctx.fill();
+
+    ctx.fillStyle = 'rgba(200, 180, 150, 0.3)';
+    ctx.beginPath();
+    ctx.arc(this.scanPos, height - 70, 4, 0, Math.PI * 2);
+    ctx.fill();
+
+    if (this.sourcesFound < 3) {
+      ctx.fillStyle = 'rgba(200, 180, 150, 0.15)';
+      ctx.font = '24px system-ui';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText('◀', 30, height / 2);
+      ctx.fillText('▶', width - 30, height / 2);
+    }
+
+    ctx.restore();
+  }
+
+  drawCompass(ctx, width) {
+    const cx = width / 2, cy = 40, radius = 30;
+
+    ctx.save();
+    ctx.fillStyle = 'rgba(0,0,0,0.5)';
+    ctx.beginPath();
+    ctx.arc(cx, cy, radius + 8, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.strokeStyle = 'rgba(200, 180, 150, 0.3)';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.arc(cx, cy, radius, 0, Math.PI * 2);
+    ctx.stroke();
+
+    for (const source of this.sources) {
+      const angle = (source.screenBaseX / 1280) * Math.PI * 2 - Math.PI / 2;
+      const r = radius - 6;
+      const dx = cx + Math.cos(angle) * r, dy = cy + Math.sin(angle) * r;
+      ctx.fillStyle = source.found ? '#f0c040' : source.color;
+      ctx.globalAlpha = source.found ? 0.8 : 0.4;
+      ctx.beginPath();
+      ctx.arc(dx, dy, source.found ? 4 : 3, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    const scanAngle = (this.scanPos / 1280) * Math.PI * 2 - Math.PI / 2;
+    ctx.save();
+    ctx.translate(cx + Math.cos(scanAngle) * 6, cy + Math.sin(scanAngle) * 6);
+    ctx.rotate(scanAngle);
+    ctx.fillStyle = '#f0d090';
+    ctx.globalAlpha = 0.8;
+    ctx.beginPath();
+    ctx.moveTo(10, 0);
+    ctx.lineTo(-5, -5);
+    ctx.lineTo(-5, 5);
+    ctx.closePath();
+    ctx.fill();
+    ctx.restore();
+
+    ctx.restore();
+  }
+
+  drawLockProgress(ctx) {
+    if (!this.isLocking || this.lockTargetIdx < 0) return;
+
+    const source = this.sources[this.lockTargetIdx];
+    const progress = source.lockProgress;
+    ctx.save();
+
+    ctx.strokeStyle = 'rgba(255,255,255,0.15)';
+    ctx.lineWidth = 4;
+    ctx.beginPath();
+    ctx.arc(source.screenBaseX, source.y, 36, 0, Math.PI * 2);
+    ctx.stroke();
+
+    ctx.strokeStyle = source.color;
+    ctx.lineWidth = 4;
+    ctx.lineCap = 'round';
+    ctx.beginPath();
+    ctx.arc(source.screenBaseX, source.y, 36, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * progress);
+    ctx.stroke();
+
+    ctx.fillStyle = source.color;
+    ctx.font = '12px system-ui';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.globalAlpha = 0.7;
+    ctx.fillText(`${Math.round(progress * 100)}%`, source.screenBaseX, source.y);
+
+    ctx.restore();
+  }
+
+  drawCelebration(ctx, width, height) {
+    const alpha = Math.min(1, this.phaseTime / 0.5) * (1 - Math.min(1, (this.phaseTime - 0.5) / 1.5));
+    ctx.save();
+    ctx.globalAlpha = alpha;
+
+    for (let i = 0; i < 20; i++) {
+      const t = this.phaseTime * 10 + i * 193.7;
+      const angle = t % (Math.PI * 2);
+      const dist = (i * 37.1 + this.phaseTime * 40) % 220 + 20;
+      ctx.fillStyle = '#f0c040';
+      ctx.beginPath();
+      ctx.arc(width / 2 + Math.cos(angle) * dist, height / 2 + Math.sin(angle * 0.7) * dist * 0.6, 1 + (i % 3), 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    ctx.fillStyle = '#f0c040';
+    ctx.font = 'bold 32px system-ui, "PingFang SC", sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('记忆解锁 +5%', width / 2, height / 2);
+
+    ctx.restore();
+  }
+
+  // ---------- Gating 2 ----------
+
+  renderGating2(ctx) {
+    const { width, height } = this.game;
+
+    this.drawElevatorBg(ctx, width, height);
+    this.drawElevatorPanel(ctx);
+
+    for (let i = 0; i < ELEVATOR_BUTTONS.length; i++) this.drawElevatorButton(ctx, i);
+
+    this.drawAIHint(ctx, width);
+
+    if (this.errorTimer > 0) {
+      ctx.save();
+      ctx.globalAlpha = this.errorTimer / 0.4;
+      const rect = getButtonRect(this.errorBtnIdx);
+      ctx.fillStyle = 'rgba(200, 40, 30, 0.25)';
+      roundedRect(ctx, rect.x - 4, rect.y - 4, rect.w + 8, rect.h + 8, 10);
+      ctx.fill();
+      ctx.strokeStyle = `rgba(200, 40, 30, ${this.errorTimer / 0.4})`;
+      ctx.lineWidth = 2;
+      roundedRect(ctx, rect.x - 4, rect.y - 4, rect.w + 8, rect.h + 8, 10);
+      ctx.stroke();
+      ctx.restore();
+    }
+
+    drawPrompt(ctx, '点击有向日葵标记的楼层按钮', width / 2, height - 30, 0);
+  }
+
+  drawElevatorBg(ctx, width, height) {
+    const grad = ctx.createLinearGradient(0, 0, width, 0);
+    grad.addColorStop(0, '#3a3835');
+    grad.addColorStop(0.3, '#4a4845');
+    grad.addColorStop(0.5, '#504e4b');
+    grad.addColorStop(0.7, '#4a4845');
+    grad.addColorStop(1, '#3a3835');
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, width, height);
+
+    const lightGrad = ctx.createLinearGradient(0, 0, width, 0);
+    lightGrad.addColorStop(0, 'rgba(255, 240, 200, 0.1)');
+    lightGrad.addColorStop(0.2, 'rgba(255, 240, 200, 0.25)');
+    lightGrad.addColorStop(0.5, 'rgba(255, 240, 200, 0.3)');
+    lightGrad.addColorStop(0.8, 'rgba(255, 240, 200, 0.25)');
+    lightGrad.addColorStop(1, 'rgba(255, 240, 200, 0.1)');
+    ctx.fillStyle = lightGrad;
+    ctx.fillRect(0, 0, width, 12);
+
+    ctx.strokeStyle = 'rgba(0,0,0,0.3)';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(10, 0); ctx.lineTo(10, height);
+    ctx.moveTo(width - 10, 0); ctx.lineTo(width - 10, height);
+    ctx.stroke();
+
+    this.drawFloorDisplay(ctx);
+  }
+
+  drawFloorDisplay(ctx, floorLabel) {
+    ctx.save();
+    ctx.fillStyle = 'rgba(0,0,0,0.4)';
+    roundedRect(ctx, 20, 20, 100, 40, 4);
+    ctx.fill();
+
+    ctx.fillStyle = '#40c040';
+    ctx.font = 'bold 20px system-ui';
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(floorLabel || '1F', 36, 40);
+
+    ctx.fillStyle = `rgba(64, 192, 64, ${0.3 + 0.3 * Math.sin(this.time * 2)})`;
+    ctx.font = '14px system-ui';
+    ctx.fillText('▲', 90, 40);
+    ctx.restore();
+  }
+
+  drawElevatorPanel(ctx) {
+    const cfg = ELEVATOR_CONFIG;
+    ctx.save();
+
+    ctx.shadowColor = 'rgba(0,0,0,0.5)';
+    ctx.shadowBlur = 20;
+    ctx.shadowOffsetY = 4;
+
+    const panelGrad = ctx.createLinearGradient(cfg.panelX, cfg.panelY, cfg.panelX, cfg.panelY + cfg.panelHeight);
+    panelGrad.addColorStop(0, '#2a2825');
+    panelGrad.addColorStop(0.5, '#353330');
+    panelGrad.addColorStop(1, '#2a2825');
+    ctx.fillStyle = panelGrad;
+    roundedRect(ctx, cfg.panelX, cfg.panelY, cfg.panelWidth, cfg.panelHeight, 16);
+    ctx.fill();
+
+    ctx.shadowBlur = 0;
+    ctx.strokeStyle = 'rgba(100,95,85,0.5)';
+    ctx.lineWidth = 1.5;
+    roundedRect(ctx, cfg.panelX, cfg.panelY, cfg.panelWidth, cfg.panelHeight, 16);
+    ctx.stroke();
+
+    ctx.fillStyle = '#706860';
+    ctx.font = '12px system-ui';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'top';
+    ctx.fillText('▲ 楼层选择 ▼', cfg.panelX + cfg.panelWidth / 2, cfg.panelY + 18);
+
+    ctx.restore();
+  }
+
+  drawElevatorButton(ctx, idx) {
+    const cfg = ELEVATOR_CONFIG;
+    const btnData = ELEVATOR_BUTTONS[idx];
+    const rect = getButtonRect(idx);
+    const isHovered = this.hoveredBtn === idx;
+    const isCorrect = idx === cfg.correctIndex;
+
+    ctx.save();
+    const cx = rect.x + rect.w / 2, cy = rect.y + rect.h / 2;
+
+    if (isHovered) { ctx.shadowColor = '#f0c040'; ctx.shadowBlur = 12; }
+
+    const btnGrad = ctx.createRadialGradient(cx - 10, cy - 10, 5, cx, cy, rect.w / 2);
+    btnGrad.addColorStop(0, isCorrect ? '#4a4845' : '#403e3b');
+    btnGrad.addColorStop(1, '#2a2825');
+    ctx.fillStyle = btnGrad;
+    roundedRect(ctx, rect.x, rect.y, rect.w, rect.h, 8);
+    ctx.fill();
+
+    ctx.shadowBlur = 0;
+    ctx.strokeStyle = isCorrect ? 'rgba(240, 192, 64, 0.2)' : 'rgba(80,75,65,0.6)';
+    ctx.lineWidth = 1.5;
+    roundedRect(ctx, rect.x, rect.y, rect.w, rect.h, 8);
+    ctx.stroke();
+
+    this.drawDistortedNumber(ctx, btnData, cx, cy);
+    if (btnData.hasSunflower) this.drawSunflowerPetals(ctx, cx, cy, cfg);
+
+    ctx.restore();
+  }
+
+  drawDistortedNumber(ctx, btnData, cx, cy) {
+    ctx.save();
+    ctx.translate(cx + (btnData.offsetX || 0), cy + (btnData.offsetY || 0));
+    ctx.rotate((btnData.rotation || 0) * Math.PI / 180);
+    ctx.scale(btnData.scaleX || 1, btnData.scaleY || 1);
+    ctx.fillStyle = '#c8c0b0';
+    ctx.font = 'bold 40px system-ui, "PingFang SC", sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.shadowColor = 'rgba(0,0,0,0.5)';
+    ctx.shadowBlur = 4;
+    ctx.fillText(btnData.label, 0, 0);
+    ctx.restore();
+  }
+
+  drawSunflowerPetals(ctx, cx, cy, cfg) {
+    ctx.save();
+    for (let i = 0; i < cfg.sunflowerPetals; i++) {
+      const angle = (i / cfg.sunflowerPetals) * Math.PI * 2 + Math.PI / 8;
+      const px = cx + Math.cos(angle) * cfg.sunflowerRadius;
+      const py = cy + Math.sin(angle) * cfg.sunflowerRadius;
+      ctx.save();
+      ctx.translate(px, py);
+      ctx.rotate(angle + Math.PI / 2);
+      ctx.globalAlpha = 0.35 + 0.15 * Math.sin(this.time * 1.5 + i * 0.8);
+      ctx.fillStyle = '#f0c040';
+      ctx.beginPath();
+      ctx.ellipse(0, 0, cfg.petalWidth, cfg.petalLen, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = '#f5d76e';
+      ctx.beginPath();
+      ctx.ellipse(0, -cfg.petalLen * 0.2, cfg.petalWidth * 0.5, cfg.petalLen * 0.4, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+    }
+    ctx.fillStyle = '#c0a030';
+    ctx.globalAlpha = 0.5;
+    ctx.beginPath();
+    ctx.arc(cx, cy, 5, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+  }
+
+  drawAIHint(ctx, width) {
+    ctx.save();
+    const hintX = width - 20, hintY = 50, hintW = 280, hintH = 80;
+
+    ctx.fillStyle = 'rgba(0,0,0,0.65)';
+    roundedRect(ctx, hintX - hintW, hintY - 10, hintW, hintH, 10);
+    ctx.fill();
+
+    ctx.strokeStyle = 'rgba(240, 192, 64, 0.3)';
+    ctx.lineWidth = 1;
+    roundedRect(ctx, hintX - hintW, hintY - 10, hintW, hintH, 10);
+    ctx.stroke();
+
+    ctx.fillStyle = '#f0c040';
+    ctx.font = '14px system-ui, "PingFang SC", sans-serif';
+    ctx.textAlign = 'right';
+    ctx.textBaseline = 'top';
+    ctx.fillText('AI 管家', hintX - 12, hintY + 4);
+
+    ctx.fillStyle = '#d4c8b8';
+    ctx.font = '15px system-ui, "PingFang SC", sans-serif';
+    ctx.fillText('"您的家在有向日葵贴纸的那一层。"', hintX - 12, hintY + 30);
+
+    ctx.restore();
+  }
+
+  // ---------- 电梯上升动画 ----------
+
+  renderGating2Elevating(ctx) {
+    const { width, height } = this.game;
+
+    ctx.save();
+    this.drawElevatorBg(ctx, width, height);
+
+    ctx.translate(0, -this.elevateOffset);
+    this.drawElevatorPanel(ctx);
+    for (let i = 0; i < ELEVATOR_BUTTONS.length; i++) {
+      if (i === ELEVATOR_CONFIG.correctIndex || this.phaseTime < 0.5) this.drawElevatorButton(ctx, i);
+    }
+    ctx.restore();
+
+    if (this.successFlash > 0) {
+      ctx.fillStyle = `rgba(240, 192, 64, ${this.successFlash * 0.15})`;
+      ctx.fillRect(0, 0, width, height);
+    }
+
+    const shake = this.phaseTime < 1 ? Math.sin(this.phaseTime * 40) * 3 : 0;
+    ctx.fillStyle = '#d4b896';
+    ctx.font = 'bold 36px system-ui, "PingFang SC", sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(`${Math.min(1 + Math.floor(this.phaseTime / 0.4), 6)}F`, width / 2 + shake, height / 2 - 40);
+
+    ctx.fillStyle = '#a09080';
+    ctx.font = '20px system-ui, "PingFang SC", sans-serif';
+    ctx.fillText('电梯缓缓上升……', width / 2 + shake, height / 2 + 20);
+  }
+
+  // ---------- 章节完成 ----------
+
+  renderComplete(ctx) {
+    // 完成时弹出 overlay，不需要自渲染内容
+  }
+}
+
+
+// ---- src/chapters/ch06_table.js ----
+
+
+
+function vibe(ms) {
+  try { navigator.vibrate(ms); } catch (e) { /* 不支持振动 */ }
+}
+
+class Chapter06 {
+  constructor(game) {
+    this.game = game;
+    this.phase = 'narrative';
+    this.phaseTime = 0;
+    this._complete = false;
+    this.time = 0;
+
+    // Gating 1 — 触觉感知
+    this.comfortProgress = 0;
+    this.fingerInBowl = false;
+
+    // 蒸汽粒子
+    this.steam = this._initSteam();
+
+    // Gating 2 — 气味拼图
+    this.particles = this._initParticles();
+    this.collectedCount = 0;
+    this.fingerX = -1;
+    this.fingerY = -1;
+    this.transformProgress = 0;  // 收集完成后几何体变形动画
+    this.transformDone = false;
+    // 收集完成时的目标光晕
+    this.targetGlow = [0, 0, 0];
+
+    // 叙事文本 — 用多行分段
+    this.narrativeLines = [
+      '终于进了家门。',
+      '"爸，折腾一天饿了吧，快吃。"',
+      '桌上是一碗热气腾腾的面条。',
+      '可是……这白乎乎的东西是什么怪物？',
+    ];
+  }
+
+  get isComplete() { return this._complete; }
+
+  _initSteam() {
+    const s = [];
+    for (let i = 0; i < GATING_CONFIG.steamCount; i++) {
+      s.push({
+        x: BOWL.cx + (Math.random() - 0.5) * 100,
+        y: BOWL.cy - 50 + (Math.random() - 0.5) * 30,
+        speed: 20 + Math.random() * 30,
+        drift: (Math.random() - 0.5) * 30,
+        life: Math.random(),
+        phase: Math.random() * Math.PI * 2,
+      });
+    }
+    return s;
+  }
+
+  _initParticles() {
+    const list = [];
+    for (const scent of SCENT_PARTICLES) {
+      for (let i = 0; i < scent.count; i++) {
+        const angle = Math.random() * Math.PI * 2;
+        const dist = 30 + Math.random() * 60;
+        list.push({
+          scentId: scent.id,
+          x: scent.sourceX + Math.cos(angle) * dist,
+          y: scent.sourceY + Math.sin(angle) * dist,
+          vx: 0, vy: 0,
+          locked: false,
+          collected: false,
+          size: 3 + Math.random() * 4,
+          phase: Math.random() * Math.PI * 2,
+        });
+      }
+    }
+    return list;
+  }
+
+  onEnter() {
+    this.game.input.setHandlers({
+      down: point => this.handleDown(point),
+      move: point => this.handleMove(point),
+      up: point => this.handleUp(point),
+      cancel: () => this.handleCancel(),
+    });
+  }
+
+  onExit() {
+    this.game.input.setHandlers();
+  }
+
+  // ============ 输入处理 ============
+
+  handleDown(point) {
+    try {
+      if (this.phase === 'narrative') {
+        if (this.phaseTime > 1.5) { this.phase = 'gating1'; this.phaseTime = 0; }
+      } else if (this.phase === 'gating1') {
+        if (hitBowl(point.x, point.y)) {
+          this.fingerInBowl = true;
+        }
+      }
+      // Gating 2 不依赖 down
+    } catch (e) { console.error('Ch06 handleDown:', e); }
+  }
+
+  handleMove(point) {
+    try {
+      this.fingerX = point.x;
+      this.fingerY = point.y;
+
+      if (this.phase === 'gating1') {
+        if (this.fingerInBowl) {
+          if (!hitBowl(point.x, point.y)) {
+            this.fingerInBowl = false;
+          }
+        } else if (hitBowl(point.x, point.y)) {
+          this.fingerInBowl = true;
+        }
+      }
+    } catch (e) { console.error('Ch06 handleMove:', e); }
+  }
+
+  handleUp(_point) {
+    if (this.phase === 'gating1') {
+      this.fingerInBowl = false;
+    }
+  }
+
+  handleCancel() {
+    this.fingerInBowl = false;
+  }
+
+  // ============ update ============
+
+  update(dt) {
+    this.time += dt;
+    this.phaseTime += dt;
+
+    switch (this.phase) {
+      case 'narrative':
+        if (this.phaseTime >= 4) { this.phase = 'gating1'; this.phaseTime = 0; }
+        break;
+
+      case 'gating1':
+        this._updateGating1(dt);
+        break;
+
+      case 'gating1_done':
+        if (this.phaseTime >= 1.5) {
+          this.phase = 'gating2';
+          this.phaseTime = 0;
+        }
+        break;
+
+      case 'gating2':
+        this._updateGating2(dt);
+        break;
+
+      case 'gating2_celebrate':
+        this.transformProgress = Math.min(1, this.phaseTime / 1.5);
+        if (this.phaseTime >= 2 && !this._complete) {
+          this._complete = true;
+          this.phase = 'complete';
+          this.phaseTime = 0;
+        }
+        break;
+
+      case 'complete':
+        if (this.phaseTime >= 1) {
+          this.game.progress.save('ch06_complete', true);
+          this.game.overlay.show({
+            type: 'complete',
+            title: '一碗热面，唤醒沉睡的味觉',
+            message: '记忆解锁 45%',
+            buttons: [
+              { text: '继续下一章节', action: () => this.game.chapterManager.next() },
+            ],
+          });
+        }
+        break;
+    }
+  }
+
+  _updateGating1(dt) {
+    // 蒸汽动画
+    for (const s of this.steam) {
+      s.life += dt * 0.4;
+      if (s.life > 1) { s.life = 0; s.x = BOWL.cx + (Math.random() - 0.5) * 100; s.y = BOWL.cy - 50; }
+      s.y -= s.speed * dt;
+      s.x += Math.sin(s.life * Math.PI * 2 + s.phase) * s.drift * dt;
+    }
+
+    if (this.fingerInBowl && this.comfortProgress < 1) {
+      this.comfortProgress = Math.min(1, this.comfortProgress + dt / GATING_CONFIG.comfortTime);
+      if (this.comfortProgress >= 1) {
+        vibe(20);
+        this.phase = 'gating1_done';
+        this.phaseTime = 0;
+      }
+    } else if (!this.fingerInBowl && this.comfortProgress > 0) {
+      this.comfortProgress = Math.max(0, this.comfortProgress - GATING_CONFIG.comfortDecay * dt);
+    }
+  }
+
+  _updateGating2(dt) {
+    // 更新粒子
+    for (const p of this.particles) {
+      if (p.locked) continue;
+
+      const scent = SCENT_PARTICLES.find(s => s.id === p.scentId);
+      if (!scent || scent.collected) continue;
+
+      // 布朗运动
+      p.phase += dt * 2;
+      p.x += Math.sin(p.phase) * 0.5;
+      p.y += Math.cos(p.phase * 0.7) * 0.5;
+
+      // 吸附逻辑：手指靠近
+      if (this.fingerX >= 0) {
+        const dist = Math.hypot(p.x - this.fingerX, p.y - this.fingerY);
+        if (dist < GATING_CONFIG.magnetRadius) {
+          const strength = 1 - dist / GATING_CONFIG.magnetRadius;
+          const angle = Math.atan2(this.fingerY - p.y, this.fingerX - p.x);
+          p.x += Math.cos(angle) * GATING_CONFIG.particleSpeed * strength * dt;
+          p.y += Math.sin(angle) * GATING_CONFIG.particleSpeed * strength * dt;
+        }
+      }
+
+      // 检测是否进入目标区域
+      const d = distToTarget(p.x, p.y, scent);
+      if (d < GATING_CONFIG.targetRadius) {
+        p.locked = true;
+        p.collected = true;
+        vibe(8);
+      }
+    }
+
+    // 检查每种香气是否已收集足够粒子
+    for (const scent of SCENT_PARTICLES) {
+      if (scent.collected) continue;
+      const locked = this.particles.filter(p => p.scentId === scent.id && p.locked).length;
+      if (locked >= scent.count * 0.7) {
+        scent.collected = true;
+        this.collectedCount++;
+        vibe(15);
+      }
+    }
+
+    // 目标发光动画
+    for (let i = 0; i < 3; i++) {
+      const scent = SCENT_PARTICLES[i];
+      this.targetGlow[i] += (scent.collected ? 1 - this.targetGlow[i] : 0 - this.targetGlow[i]) * Math.min(1, dt * 4);
+    }
+
+    // 全部收集完成
+    if (this.collectedCount >= 3 && !this.transformDone) {
+      this.transformDone = true;
+      this.phase = 'gating2_celebrate';
+      this.phaseTime = 0;
+    }
+  }
+
+  // ============ render ============
+
+  render(ctx) {
+    try {
+      this._renderSafe(ctx);
+    } catch (e) {
+      console.error('Ch06 render error:', e);
+      ctx.fillStyle = '#0a0806';
+      ctx.fillRect(0, 0, this.game.width, this.game.height);
+      ctx.fillStyle = '#d4b896';
+      ctx.font = '20px system-ui, "PingFang SC", sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText('画面加载异常，请重试', this.game.width / 2, this.game.height / 2);
+    }
+  }
+
+  _renderSafe(ctx) {
+    const { width, height } = this.game;
+    switch (this.phase) {
+      case 'narrative': this.renderNarrative(ctx); break;
+      case 'gating1':
+      case 'gating1_done': this.renderGating1(ctx); break;
+      case 'gating2': this.renderGating2(ctx); break;
+      case 'gating2_celebrate': this.renderGating2Celebrate(ctx); break;
+      case 'complete': /* overlay 处理 */ break;
+      default:
+        ctx.fillStyle = '#0a0806';
+        ctx.fillRect(0, 0, width, height);
+    }
+  }
+
+  // ---------- 叙事开场 ----------
+
+  renderNarrative(ctx) {
+    const { width, height } = this.game;
+    ctx.fillStyle = '#0a0806';
+    ctx.fillRect(0, 0, width, height);
+
+    const alpha = Math.min(1, this.phaseTime / 1.5);
+    const textIdx = Math.min(Math.floor(this.phaseTime / 0.9), this.narrativeLines.length - 1);
+
+    ctx.save();
+    ctx.globalAlpha = alpha;
+    ctx.fillStyle = '#d4b896';
+    ctx.font = '500 26px system-ui, "PingFang SC", sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+
+    const chars = Math.floor((this.phaseTime - textIdx * 0.9) / 0.035);
+    ctx.fillText(this.narrativeLines[textIdx].slice(0, Math.min(chars, this.narrativeLines[textIdx].length)), width / 2, height / 2 - 20);
+
+    if (this.phaseTime > 2.5) {
+      ctx.globalAlpha = Math.min(1, (this.phaseTime - 2.5) / 0.8);
+      ctx.fillStyle = '#8a7a6a';
+      ctx.font = '16px system-ui, "PingFang SC", sans-serif';
+      ctx.fillText('点击或触摸继续……', width / 2, height - 60);
+    }
+    ctx.restore();
+  }
+
+  // ---------- Gating 1：触觉与热量感知 ----------
+
+  renderGating1(ctx) {
+    const { width, height } = this.game;
+
+    // 1. 餐桌背景
+    this._drawTableBg(ctx, width, height);
+
+    // 2. 蒸汽
+    this._drawSteam(ctx);
+
+    // 3. 焦虑光晕 + 进度过渡
+    this._drawAnxietyVignette(ctx, width, height);
+
+    // 4. 碗 + 荷包蛋怪物
+    this._drawBowl(ctx);
+
+    // 5. 温度光晕
+    this._drawWarmGlow(ctx);
+
+    // 6. 进度环
+    this._drawComfortRing(ctx);
+
+    // 7. 提示文字
+    if (this.phase === 'gating1') {
+      if (this.fingerInBowl) {
+        drawPrompt(ctx, '它是温热的，没有危险……', width / 2, height - 40, 0.2);
+      } else if (this.comfortProgress > 0) {
+        drawPrompt(ctx, '继续抚摸碗壁……', width / 2, height - 40, 0);
+      } else {
+        drawPrompt(ctx, '它冒着热气……试着摸摸碗壁', width / 2, height - 40, 0);
+      }
+    } else if (this.phase === 'gating1_done') {
+      const a = Math.min(1, this.phaseTime / 0.8);
+      ctx.save();
+      ctx.globalAlpha = a;
+      ctx.fillStyle = '#f0c040';
+      ctx.font = 'bold 22px system-ui, "PingFang SC", sans-serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'bottom';
+      ctx.fillText('感觉安全了一些……', width / 2, height - 45);
+      ctx.restore();
+    }
+  }
+
+  _drawTableBg(ctx, width, height) {
+    // 暖色餐厅背景
+    const grad = ctx.createLinearGradient(0, 0, 0, height);
+    grad.addColorStop(0, '#2a2018');
+    grad.addColorStop(0.5, '#3a2e20');
+    grad.addColorStop(1, '#1e1812');
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, width, height);
+
+    // 桌面
+    ctx.fillStyle = '#4a3a28';
+    ctx.beginPath();
+    ctx.ellipse(width / 2, height - 60, 500, 120, 0, Math.PI, 0);
+    ctx.fill();
+
+    // 桌面高光
+    ctx.fillStyle = 'rgba(255, 240, 200, 0.06)';
+    ctx.beginPath();
+    ctx.ellipse(width / 2, height - 90, 350, 50, 0, Math.PI, 0);
+    ctx.fill();
+  }
+
+  _drawSteam(ctx) {
+    ctx.save();
+    for (const s of this.steam) {
+      const alpha = Math.sin(s.life * Math.PI) * 0.2;
+      ctx.fillStyle = `rgba(240, 230, 210, ${alpha})`;
+      ctx.beginPath();
+      ctx.arc(s.x, s.y, 4 + Math.sin(s.life * Math.PI * 3) * 2, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.restore();
+  }
+
+  _drawAnxietyVignette(ctx, width, height) {
+    const p = this.comfortProgress;
+    // 红色 → 暖橘色渐变
+    const r = Math.round(180 * (1 - p));
+    const g = Math.round(50 + 80 * p);
+    const b = Math.round(40 + 60 * p);
+    const alpha = 0.3 * (1 - p * 0.7);
+    const grad = ctx.createRadialGradient(width / 2, height / 2, 200, width / 2, height / 2, 450);
+    grad.addColorStop(0, `rgba(${r}, ${g}, ${b}, 0)`);
+    grad.addColorStop(0.6, `rgba(${r}, ${g}, ${b}, ${alpha * 0.5})`);
+    grad.addColorStop(1, `rgba(${r}, ${g}, ${b}, ${alpha})`);
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, width, height);
+
+    // 边缘闪烁线条（焦虑特效）
+    if (p < 0.8) {
+      const flicker = (1 - p) * 0.15 * (0.5 + 0.5 * Math.sin(this.time * 6));
+      ctx.save();
+      ctx.strokeStyle = `rgba(180, 40, 30, ${flicker})`;
+      ctx.lineWidth = 2;
+      // 上下边缘不规则线条
+      for (let i = 0; i < 8; i++) {
+        const lx = Math.random() * width;
+        ctx.beginPath();
+        ctx.moveTo(lx, 0);
+        ctx.lineTo(lx + 20, Math.random() * 30);
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.moveTo(lx, height);
+        ctx.lineTo(lx + 20, height - Math.random() * 30);
+        ctx.stroke();
+      }
+      ctx.restore();
+    }
+  }
+
+  _drawBowl(ctx) {
+    const cx = BOWL.cx, cy = BOWL.cy;
+
+    ctx.save();
+
+    // 碗的外沿
+    ctx.shadowColor = 'rgba(0,0,0,0.3)';
+    ctx.shadowBlur = 15;
+    ctx.shadowOffsetY = 4;
+    ctx.fillStyle = '#d4c8b0';
+    ctx.beginPath();
+    ctx.ellipse(cx, cy, BOWL.rx, BOWL.ry, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    // 碗内壁（深色）
+    ctx.shadowBlur = 0;
+    ctx.fillStyle = '#b8a88a';
+    ctx.beginPath();
+    ctx.ellipse(cx, cy - 8, BOWL.innerRx, BOWL.innerRy, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    // 碗内汤底
+    ctx.fillStyle = '#8a6a3a';
+    ctx.beginPath();
+    ctx.ellipse(cx, cy - 4, BOWL.innerRx - 10, BOWL.innerRy - 8, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    // 面条（曲线）
+    ctx.strokeStyle = '#c8b88a';
+    ctx.lineWidth = 5;
+    ctx.lineCap = 'round';
+    for (let i = 0; i < 4; i++) {
+      const baseAngle = i * Math.PI / 2 + this.time * 0.5;
+      ctx.beginPath();
+      ctx.moveTo(cx + Math.cos(baseAngle) * 40, cy - 10 + Math.sin(baseAngle) * 20);
+      ctx.quadraticCurveTo(cx + Math.cos(baseAngle + 0.5) * 70, cy - 30, cx + Math.cos(baseAngle + 1) * 40, cy - 15);
+      ctx.stroke();
+    }
+
+    // 荷包蛋 — 在主角眼中是"怪物"形状
+    if (this.phase === 'gating1' || this.phase === 'gating1_done') {
+      // 蛋白 = 白色扭曲椭圆（像怪物的眼白）
+      ctx.fillStyle = '#f0ece0';
+      ctx.beginPath();
+      ctx.ellipse(cx + 10, cy - 25, 50, 30, 0.3, 0, Math.PI * 2);
+      ctx.fill();
+
+      // 蛋黄 = 黄色圆形（像瞳孔）
+      ctx.fillStyle = '#f0a030';
+      ctx.beginPath();
+      ctx.arc(cx + 5, cy - 28, 12, 0, Math.PI * 2);
+      ctx.fill();
+
+      // 高光
+      ctx.fillStyle = 'rgba(255,255,255,0.4)';
+      ctx.beginPath();
+      ctx.arc(cx, cy - 33, 4, 0, Math.PI * 2);
+      ctx.fill();
+
+      // 怪物化细节：三叉触须
+      ctx.strokeStyle = 'rgba(200,100,80,0.3)';
+      ctx.lineWidth = 3;
+      for (let i = -1; i <= 1; i++) {
+        ctx.beginPath();
+        ctx.moveTo(cx + i * 20, cy - 12);
+        ctx.lineTo(cx + i * 30, cy + 5);
+        ctx.stroke();
+      }
+    }
+
+    ctx.restore();
+  }
+
+  _drawWarmGlow(ctx) {
+    if (this.comfortProgress <= 0) return;
+    const alpha = this.comfortProgress * 0.2;
+    const grad = ctx.createRadialGradient(BOWL.cx, BOWL.cy, 20, BOWL.cx, BOWL.cy, BOWL.rx + 60);
+    grad.addColorStop(0, `rgba(255, 200, 100, ${alpha})`);
+    grad.addColorStop(1, 'rgba(255, 200, 100, 0)');
+    ctx.fillStyle = grad;
+    ctx.beginPath();
+    ctx.arc(BOWL.cx, BOWL.cy, BOWL.rx + 60, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  _drawComfortRing(ctx) {
+    if (this.comfortProgress <= 0) return;
+    const cx = BOWL.cx, cy = BOWL.cy - BOWL.ry - 30;
+    const ringR = 22;
+
+    ctx.save();
+
+    // 背景环
+    ctx.strokeStyle = 'rgba(255,255,255,0.15)';
+    ctx.lineWidth = 4;
+    ctx.beginPath();
+    ctx.arc(cx, cy, ringR, 0, Math.PI * 2);
+    ctx.stroke();
+
+    // 进度环
+    ctx.strokeStyle = '#f0c040';
+    ctx.lineWidth = 4;
+    ctx.lineCap = 'round';
+    ctx.beginPath();
+    ctx.arc(cx, cy, ringR, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * this.comfortProgress);
+    ctx.stroke();
+
+    // 百分比
+    ctx.fillStyle = '#f0c040';
+    ctx.font = '12px system-ui';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.globalAlpha = 0.7;
+    ctx.fillText(`${Math.round(this.comfortProgress * 100)}%`, cx, cy);
+
+    ctx.restore();
+  }
+
+  // ---------- Gating 2：气味拼图 ----------
+
+  renderGating2(ctx) {
+    const { width, height } = this.game;
+
+    // 1. 背景（保持餐桌）
+    this._drawTableBg(ctx, width, height);
+
+    // 2. 抽象化食物（几何体）
+    this._drawAbstractFood(ctx);
+
+    // 3. 目标残影区域
+    this._drawTargetZones(ctx);
+
+    // 4. 香气粒子
+    this._drawParticles(ctx);
+
+    // 5. 手指拖拽光晕
+    this._drawFingerGlow(ctx);
+
+    // 6. 收集进度面板
+    this._drawCollectionPanel(ctx);
+
+    // 7. 提示文字
+    drawPrompt(ctx, '用手指将香气引导到食物上', width / 2, height - 35, 0);
+  }
+
+  _drawAbstractFood(ctx) {
+    const cx = BOWL.cx, cy = BOWL.cy - 15;
+
+    ctx.save();
+
+    // 面条 = 混乱纠缠的灰色曲线
+    ctx.strokeStyle = '#6a6a6a';
+    ctx.lineWidth = 5;
+    ctx.lineCap = 'round';
+    for (let i = 0; i < 6; i++) {
+      const t = this.time * 0.8 + i * 1.2;
+      ctx.beginPath();
+      ctx.moveTo(cx + Math.sin(t) * 30, cy + Math.cos(t * 0.7) * 20);
+      ctx.quadraticCurveTo(
+        cx + Math.sin(t + 1) * 60, cy + Math.cos(t * 0.5 + 1) * 40,
+        cx + Math.sin(t + 2) * 40, cy + Math.cos(t * 0.8 + 2) * 25,
+      );
+      ctx.stroke();
+    }
+
+    // 荷包蛋怪物 = 扭曲的白色几何体 + 黄色圆形
+    ctx.fillStyle = '#a0a0a0';
+    ctx.beginPath();
+    ctx.ellipse(cx + 15, cy - 15, 45, 28, 0.5, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.fillStyle = '#888';
+    ctx.beginPath();
+    ctx.arc(cx + 8, cy - 18, 10, 0, Math.PI * 2);
+    ctx.fill();
+
+    // 诡异线条
+    ctx.strokeStyle = 'rgba(100,80,80,0.4)';
+    ctx.lineWidth = 2;
+    for (let i = 0; i < 5; i++) {
+      const a = this.time * 1.5 + i * 1.3;
+      ctx.beginPath();
+      ctx.moveTo(cx + Math.cos(a) * 45, cy - 15 + Math.sin(a) * 25);
+      ctx.lineTo(cx + Math.cos(a + 0.5) * 55, cy - 15 + Math.sin(a + 0.5) * 35);
+      ctx.stroke();
+    }
+
+    ctx.restore();
+  }
+
+  _drawTargetZones(ctx) {
+    for (let i = 0; i < SCENT_PARTICLES.length; i++) {
+      const scent = SCENT_PARTICLES[i];
+      const glow = this.targetGlow[i];
+
+      ctx.save();
+
+      // 外圈发光
+      const grad = ctx.createRadialGradient(scent.targetX, scent.targetY, 5, scent.targetX, scent.targetY, GATING_CONFIG.targetRadius + 10);
+      grad.addColorStop(0, scent.glowColor);
+      grad.addColorStop(1, 'rgba(0,0,0,0)');
+      ctx.fillStyle = grad;
+      ctx.beginPath();
+      ctx.arc(scent.targetX, scent.targetY, GATING_CONFIG.targetRadius + 10, 0, Math.PI * 2);
+      ctx.fill();
+
+      // 虚线圆
+      ctx.strokeStyle = scent.collected ? scent.color : `rgba(200,200,200,0.3)`;
+      ctx.lineWidth = 2;
+      ctx.setLineDash([5, 5]);
+      ctx.beginPath();
+      ctx.arc(scent.targetX, scent.targetY, GATING_CONFIG.targetRadius, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.setLineDash([]);
+
+      // 标签
+      if (!scent.collected) {
+        ctx.fillStyle = 'rgba(255,255,255,0.4)';
+        ctx.font = '14px system-ui, "PingFang SC", sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'bottom';
+        ctx.fillText(scent.label, scent.targetX, scent.targetY - GATING_CONFIG.targetRadius - 8);
+      } else {
+        // 勾号
+        ctx.fillStyle = scent.color;
+        ctx.font = '20px system-ui';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.globalAlpha = 0.5 + 0.3 * Math.sin(this.time * 2);
+        ctx.fillText('✓', scent.targetX, scent.targetY);
+      }
+
+      ctx.restore();
+    }
+  }
+
+  _drawParticles(ctx) {
+    for (let i = 0; i < SCENT_PARTICLES.length; i++) {
+      const scent = SCENT_PARTICLES[i];
+      if (scent.collected) continue;
+
+      const particles = this.particles.filter(p => p.scentId === scent.id && !p.collected);
+      for (const p of particles) {
+        ctx.save();
+
+        // 发光
+        const grad = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, p.size * 3);
+        grad.addColorStop(0, scent.color + '60');
+        grad.addColorStop(1, scent.color + '00');
+        ctx.fillStyle = grad;
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, p.size * 3, 0, Math.PI * 2);
+        ctx.fill();
+
+        // 粒子本身
+        ctx.globalAlpha = 0.7 + 0.3 * Math.sin(this.time * 2 + p.phase);
+        ctx.fillStyle = scent.color;
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.restore();
+      }
+    }
+  }
+
+  _drawFingerGlow(ctx) {
+    if (this.fingerX < 0 || this.fingerY < 0) return;
+
+    ctx.save();
+    const grad = ctx.createRadialGradient(this.fingerX, this.fingerY, 0, this.fingerX, this.fingerY, GATING_CONFIG.magnetRadius);
+    grad.addColorStop(0, 'rgba(255,255,255,0.08)');
+    grad.addColorStop(1, 'rgba(255,255,255,0)');
+    ctx.fillStyle = grad;
+    ctx.beginPath();
+    ctx.arc(this.fingerX, this.fingerY, GATING_CONFIG.magnetRadius, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+  }
+
+  _drawCollectionPanel(ctx) {
+    const cfg = COLLECTION_PANEL;
+
+    ctx.save();
+
+    // 面板背景
+    ctx.fillStyle = 'rgba(0,0,0,0.4)';
+    roundedRect(ctx, cfg.x - 8, cfg.y - 8, 180, 44, 10);
+    ctx.fill();
+
+    for (let i = 0; i < SCENT_PARTICLES.length; i++) {
+      const scent = SCENT_PARTICLES[i];
+      const bx = cfg.x + i * (cfg.iconSize + cfg.gap);
+      const by = cfg.y;
+
+      // 圆圈
+      ctx.fillStyle = scent.collected ? scent.color : 'rgba(100,100,100,0.5)';
+      ctx.globalAlpha = scent.collected ? 0.9 : 0.4;
+      ctx.beginPath();
+      ctx.arc(bx + cfg.iconSize / 2, by + cfg.iconSize / 2, cfg.iconSize / 2, 0, Math.PI * 2);
+      ctx.fill();
+
+      // 收集后的勾
+      if (scent.collected) {
+        ctx.fillStyle = '#fff';
+        ctx.font = '14px system-ui';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText('✓', bx + cfg.iconSize / 2, by + cfg.iconSize / 2 + 1);
+      }
+    }
+
+    ctx.restore();
+  }
+
+  // ---------- Gating 2：庆祝过渡动画 ----------
+
+  renderGating2Celebrate(ctx) {
+    const { width, height } = this.game;
+
+    this._drawTableBg(ctx, width, height);
+
+    // 食物从抽象恢复真实的过渡
+    const tp = this.transformProgress;
+    this._drawTransformingFood(ctx, tp);
+
+    // 目标区域光晕
+    for (let i = 0; i < SCENT_PARTICLES.length; i++) {
+      const scent = SCENT_PARTICLES[i];
+      ctx.save();
+      const g = ctx.createRadialGradient(scent.targetX, scent.targetY, 5, scent.targetX, scent.targetY, 40 + tp * 30);
+      g.addColorStop(0, scent.color + '80');
+      g.addColorStop(1, scent.color + '00');
+      ctx.fillStyle = g;
+      ctx.beginPath();
+      ctx.arc(scent.targetX, scent.targetY, 40 + tp * 30, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+    }
+
+    // 蒸汽增多
+    ctx.save();
+    for (let i = 0; i < 20; i++) {
+      const t = this.time * 3 + i * 2.1;
+      const sx = BOWL.cx + Math.sin(t) * 60;
+      const sy = BOWL.cy - 40 - (t % 60);
+      const alpha = Math.sin(t * 0.5) * 0.15;
+      ctx.fillStyle = `rgba(240, 230, 210, ${alpha})`;
+      ctx.beginPath();
+      ctx.arc(sx, sy, 5 + Math.sin(t) * 2, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.restore();
+
+    // 金色粒子
+    ctx.save();
+    for (let i = 0; i < 12; i++) {
+      const t = this.phaseTime * 8 + i * 2.5;
+      const px = width / 2 + Math.cos(t) * (80 + Math.sin(t * 0.7) * 40);
+      const py = height / 2 + Math.sin(t * 0.8) * 60;
+      ctx.fillStyle = `rgba(240, 192, 64, ${0.3 + 0.2 * Math.sin(t)})`;
+      ctx.beginPath();
+      ctx.arc(px, py, 2 + Math.sin(t * 2) * 1, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.restore();
+
+    // 文字
+    ctx.save();
+    ctx.fillStyle = '#f0c040';
+    ctx.font = 'bold 28px system-ui, "PingFang SC", sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.globalAlpha = Math.min(1, tp);
+    ctx.fillText('这味道……好熟悉。', width / 2, height / 2 - 30);
+
+    ctx.fillStyle = '#d4b896';
+    ctx.font = '18px system-ui, "PingFang SC", sans-serif';
+    ctx.globalAlpha = Math.min(1, tp);
+    ctx.fillText('是记忆中的味道。', width / 2, height / 2 + 20);
+
+    ctx.restore();
+  }
+
+  _drawTransformingFood(ctx, tp) {
+    const cx = BOWL.cx, cy = BOWL.cy - 15;
+
+    ctx.save();
+
+    // 面条：从灰色纠缠 → 暖色自然曲线
+    const lineColor = tp < 0.5 ? '#6a6a6a' : '#c8b88a';
+    ctx.strokeStyle = lineColor;
+    ctx.lineWidth = 4 + (1 - tp) * 2;
+    ctx.lineCap = 'round';
+
+    const chaos = 1 - tp;  // 混乱度递减
+    for (let i = 0; i < 5; i++) {
+      const t = this.time * 0.5 + i * 1.5;
+      ctx.beginPath();
+      ctx.moveTo(
+        cx + Math.sin(t) * 30 * chaos,
+        cy + Math.cos(t * 0.7) * 20 * chaos,
+      );
+      ctx.quadraticCurveTo(
+        cx + Math.sin(t + 1) * (40 + tp * 30) * chaos,
+        cy + Math.cos(t * 0.5 + 1) * (20 + tp * 15) * chaos,
+        cx + Math.sin(t + 2) * (25 + tp * 20),
+        cy + Math.cos(t * 0.8 + 2) * (15 + tp * 10),
+      );
+      ctx.stroke();
+    }
+
+    // 荷包蛋：从灰色怪物 → 正常白色蛋白+金黄蛋黄
+    const eggGray = Math.round(160 * (1 - tp));
+    ctx.fillStyle = `rgb(${240 - eggGray}, ${236 - eggGray * 0.5}, ${224 - eggGray * 0.3})`;
+    ctx.beginPath();
+    ctx.ellipse(cx + 15 - tp * 5, cy - 15 + tp * 5, 45 - chaos * 10, 28 - chaos * 8, 0.3 * chaos, 0, Math.PI * 2);
+    ctx.fill();
+
+    const yolkR = Math.round(240 * tp + 160 * (1 - tp));
+    const yolkG = Math.round(160 * tp + 80 * (1 - tp));
+    const yolkB = Math.round(48 * tp + 60 * (1 - tp));
+    ctx.fillStyle = `rgb(${yolkR}, ${yolkG}, ${yolkB})`;
+    ctx.beginPath();
+    ctx.arc(cx + 8 - tp * 3, cy - 18 + tp * 3, 10 + tp * 2, 0, Math.PI * 2);
+    ctx.fill();
+
+    // 高光恢复
+    if (tp > 0.3) {
+      ctx.fillStyle = `rgba(255,255,255,${(tp - 0.3) * 0.6})`;
+      ctx.beginPath();
+      ctx.arc(cx + 5 - tp * 2, cy - 23 + tp * 3, 4, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    ctx.restore();
+  }
+}
+
+
 // ---- src/chapters/ch08_sign.js ----
 // Ch8 签字——从独立 app 重写为 Chapter 接口
 
@@ -1839,6 +3781,8 @@ class Chapter08 {
 
 
 
+
+
 const DESIGN_W = 1280;
 const DESIGN_H = 720;
 const canvas = document.getElementById('gameCanvas');
@@ -1925,9 +3869,11 @@ async function boot() {
     game.overlay = new Overlay(game);
     game.chapterManager = new ChapterManager(game);
 
-    // 注册章节
+    // 注册章节（Ch1/4/7/9/10 占位，后续实现）
     game.chapterManager.register('ch02', Chapter02);
     game.chapterManager.register('ch03', Chapter03);
+    game.chapterManager.register('ch05', Chapter05);
+    game.chapterManager.register('ch06', Chapter06);
     game.chapterManager.register('ch08', Chapter08);
 
     window.game = game;

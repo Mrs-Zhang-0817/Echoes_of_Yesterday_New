@@ -16,11 +16,15 @@ const files = [
   // utils
   'src/utils/sceneUtils.js',
   'src/utils/puzzleLayout.js',
+  'src/utils/returnNightLayout.js',
+  'src/utils/tableLayout.js',
   // chapter layouts
   'src/chapters/ch03_mazeLayout.js',
-  // chapters
+  // chapters (按章节顺序)
   'src/chapters/ch02_puzzle.js',
   'src/chapters/ch03_maze.js',
+  'src/chapters/ch05_door.js',
+  'src/chapters/ch06_table.js',
   'src/chapters/ch08_sign.js',
   // main entry
   'src/main_new.js',

@@ -1,0 +1,51 @@
+[{
+  "id": "ch01_intro",
+  "title": "序曲·镜前",
+  "memoryUnlock": 5,
+  "order": 1
+}, {
+  "id": "ch02_puzzle",
+  "title": "接女儿放学",
+  "memoryUnlock": 15,
+  "order": 2
+}, {
+  "id": "ch03_maze",
+  "title": "迷途",
+  "memoryUnlock": 22,
+  "order": 3
+}, {
+  "id": "ch04_police",
+  "title": "警局",
+  "memoryUnlock": 30,
+  "order": 4
+}, {
+  "id": "ch05_door",
+  "title": "归家迷途",
+  "memoryUnlock": 40,
+  "order": 5
+}, {
+  "id": "ch06_table",
+  "title": "餐桌上的博弈",
+  "memoryUnlock": 50,
+  "order": 6
+}, {
+  "id": "ch07_night",
+  "title": "惊悚夜醒",
+  "memoryUnlock": 60,
+  "order": 7
+}, {
+  "id": "ch08_sign",
+  "title": "自我和解",
+  "memoryUnlock": 75,
+  "order": 8
+}, {
+  "id": "ch09_chime",
+  "title": "风铃",
+  "memoryUnlock": 90,
+  "order": 9
+}, {
+  "id": "ch10_report",
+  "title": "认出",
+  "memoryUnlock": 100,
+  "order": 10
+}]
