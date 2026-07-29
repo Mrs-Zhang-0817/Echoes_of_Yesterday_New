@@ -135,14 +135,15 @@ export class Chapter08 {
   }
 
   handleDown(point) {
+    // 弹层/按钮优先：超时、提示、完成、清除、提交
+    // 关键修复：writing 阶段点击必须先判按钮，否则"提交/清除"命中永远走不进 checkButtonClick，全员卡签字关
+    if (this.checkButtonClick(point)) return;
+
     if (this.phase === 'writing' && !this.passed) {
       this.wDown = true;
       this.wPid = point.pointerId;
       this.cur = [point];
-      return;
     }
-    // 检查弹层按钮（超时/提示/通过）
-    this.checkButtonClick(point);
   }
 
   handleMove(point) {
@@ -177,31 +178,32 @@ export class Chapter08 {
     if (point.x >= cx && point.x <= cx + cw && point.y >= cy && point.y <= cy + ch) {
       this.strokes = [];
       this.cur = [];
-      return;
+      return true;
     }
     // "提交"按钮
     const bw = 110, bh = 40, bx = this.DW - bw - 20, by = this.DH - bh - 16;
     if (point.x >= bx && point.x <= bx + bw && point.y >= by && point.y <= by + bh) {
       this.submit();
-      return;
+      return true;
     }
-    // 弹层按钮
+    // 弹层按钮（超时/提示/完成）：任意点击即响应
     if (this.timeoutFired) {
       this.timeoutFired = false;
       this.elapsed = 0;
       this.totalDT = 0;
       try { navigator.vibrate?.(10); } catch {}
-      return;
+      return true;
     }
     if (this.showHint) {
       this.showHint = false;
       try { navigator.vibrate?.(10); } catch {}
-      return;
+      return true;
     }
     if (this._completed) {
       this.resetAll();
-      return;
+      return true;
     }
+    return false;
   }
 
   submit() {
