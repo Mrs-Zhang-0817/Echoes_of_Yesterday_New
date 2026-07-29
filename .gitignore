@@ -28,7 +28,10 @@ build_out/
 build_out/screenshots/
 
 # 本地美术/审计资源（不进版本库，仅本地使用）
-美术资产/
+美术资源汇总/
 ch07-assets/
 ch07-assets 2/
+ch08-assets/
+ch09-assets/
+ch10-assets/
 visual_check_report/
