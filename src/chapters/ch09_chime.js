@@ -215,6 +215,15 @@ export class Chapter09 {
       ctx.restore();
     }
 
+    // 谱本符号使用正式绘制稿，完成时自然显现为记忆线索。
+    const glyphsImg = this.game.images.ch9_notebook_glyphs;
+    if (glyphsImg) {
+      ctx.save();
+      ctx.globalAlpha = this.state === 'complete' ? 0.9 : 0.55;
+      ctx.drawImage(glyphsImg, DW - 310, DH - 245, 250, 200);
+      ctx.restore();
+    }
+
     // 3. 吊线：从窗框底部垂下 5 条细线，对应音符目标位置
     ctx.save();
     ctx.strokeStyle = '#6a5040';

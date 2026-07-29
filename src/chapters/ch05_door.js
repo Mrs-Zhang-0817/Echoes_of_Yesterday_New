@@ -62,7 +62,7 @@ export class Chapter05 {
     try {
       if (this.phase === 'narrative') {
         if (this.phaseTime > 1.5) {
-          this.phase = 'gating1';
+          this.phase = 'gating2';
           this.phaseTime = 0;
         }
       } else if (this.phase === 'gating1') {
@@ -178,7 +178,7 @@ export class Chapter05 {
 
     switch (this.phase) {
       case 'narrative':
-        if (this.phaseTime >= 6) { this.phase = 'gating1'; this.phaseTime = 0; }
+        if (this.phaseTime >= 6) { this.phase = 'gating2'; this.phaseTime = 0; }
         break;
 
       case 'gating1':
@@ -632,6 +632,14 @@ export class Chapter05 {
   }
 
   drawElevatorBg(ctx, width, height) {
+    const elevator = this.game.images.ch5_bg_elevator;
+    if (elevator) {
+      ctx.drawImage(elevator, 0, 0, width, height);
+      ctx.fillStyle = 'rgba(15, 13, 12, 0.24)';
+      ctx.fillRect(0, 0, width, height);
+      this.drawFloorDisplay(ctx);
+      return;
+    }
     const grad = ctx.createLinearGradient(0, 0, width, 0);
     grad.addColorStop(0, '#3a3835');
     grad.addColorStop(0.3, '#4a4845');
@@ -756,6 +764,14 @@ export class Chapter05 {
   }
 
   drawSunflowerPetals(ctx, cx, cy, cfg) {
+    const sticker = this.game.images.ch5_sunflower_sticker;
+    if (sticker) {
+      ctx.save();
+      ctx.globalAlpha = 0.9 + 0.1 * Math.sin(this.time * 1.5);
+      ctx.drawImage(sticker, cx - 34, cy - 34, 68, 68);
+      ctx.restore();
+      return;
+    }
     ctx.save();
     for (let i = 0; i < cfg.sunflowerPetals; i++) {
       const angle = (i / cfg.sunflowerPetals) * Math.PI * 2 + Math.PI / 8;

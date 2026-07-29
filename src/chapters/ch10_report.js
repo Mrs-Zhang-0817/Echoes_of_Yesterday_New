@@ -1,4 +1,5 @@
 import { drawImageCover, drawPrompt, roundedRect } from '../utils/sceneUtils.js';
+import { drawArchiveButton, drawArchivePanel, drawArchiveStamp } from '../ui/ArchiveUI.js';
 
 const CHAPTERS = [
   { id: 1, title: '序曲·镜前', memory: 5 },
@@ -301,22 +302,11 @@ export class Chapter10 {
     }
 
     // --- 标题区 ---
+    drawArchivePanel(ctx, 120, 24, width - 240, 82, '记忆恢复档案');
+    drawArchiveStamp(ctx, width - 165, 65, '已归档');
     ctx.save();
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-
-    // "记忆报告" 大字
-    ctx.fillStyle = '#2a1a0c';
-    ctx.font = 'bold 36px "PingFang SC", system-ui, sans-serif';
-    ctx.fillText('记忆报告', width / 2, 60);
-
-    // 分隔线
-    ctx.strokeStyle = '#c4a878';
-    ctx.lineWidth = 1;
-    ctx.beginPath();
-    ctx.moveTo((width - 300) / 2, 92);
-    ctx.lineTo((width + 300) / 2, 92);
-    ctx.stroke();
 
     ctx.restore();
 
@@ -432,23 +422,7 @@ export class Chapter10 {
     ctx.save();
 
     const btn = this.restartBtn;
-    // 圆角矩形
-    ctx.shadowColor = 'rgba(0,0,0,0.2)';
-    ctx.shadowBlur = 8;
-    ctx.shadowOffsetY = 3;
-    ctx.fillStyle = '#4d3420';
-    roundedRect(ctx, btn.x, btn.y, btn.w, btn.h, 21);
-    ctx.fill();
-
-    ctx.shadowBlur = 0;
-    ctx.shadowOffsetY = 0;
-
-    // 按钮文字
-    ctx.fillStyle = '#ffffff';
-    ctx.font = '600 18px "PingFang SC", system-ui, sans-serif';
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.fillText('重新开始', btn.x + btn.w / 2, btn.y + btn.h / 2);
+    drawArchiveButton(ctx, btn.x, btn.y, btn.w, btn.h, '重新开始');
 
     ctx.restore();
   }

@@ -229,7 +229,10 @@ export class Chapter07 {
 
   renderNarrative(ctx) {
     const { width, height } = this.game;
-    ctx.fillStyle = '#0a0806';
+    const bedroom = this.game.images.ch7_bg_bedroom_night;
+    if (bedroom) ctx.drawImage(bedroom, 0, 0, width, height);
+    else { ctx.fillStyle = '#0a0806'; ctx.fillRect(0, 0, width, height); }
+    ctx.fillStyle = 'rgba(5, 5, 8, 0.72)';
     ctx.fillRect(0, 0, width, height);
 
     const alpha = Math.min(1, this.phaseTime / 1.5);
@@ -259,9 +262,10 @@ export class Chapter07 {
   renderSearching(ctx) {
     const { width, height } = this.game;
 
-    // 1. 纯黑背景
-    ctx.fillStyle = '#0a0806';
-    ctx.fillRect(0, 0, width, height);
+    // 1. 正式卧室夜景，保持黑暗探索的可读性。
+    const bedroom = this.game.images.ch7_bg_bedroom_night;
+    if (bedroom) { ctx.drawImage(bedroom, 0, 0, width, height); ctx.fillStyle = 'rgba(3, 4, 8, 0.88)'; ctx.fillRect(0, 0, width, height); }
+    else { ctx.fillStyle = '#0a0806'; ctx.fillRect(0, 0, width, height); }
 
     // 2. 噪点
     this._drawNoise(ctx);
@@ -333,7 +337,14 @@ export class Chapter07 {
       ctx.fill();
     }
 
-    // 门锁本身（小圆形）
+    const lock = this.game.images.ch7_door_lock;
+    if (lock) {
+      ctx.save();
+      ctx.globalAlpha = lockOpacity;
+      ctx.drawImage(lock, this.lockX - 30, this.lockY - 50, 60, 100);
+      ctx.restore();
+    } else {
+    // 门锁本身（兼容未加载时的小圆形）
     ctx.fillStyle = `rgba(196, 160, 96, ${lockOpacity})`;
     ctx.beginPath();
     ctx.arc(this.lockX, this.lockY, 18, 0, Math.PI * 2);
@@ -346,6 +357,7 @@ export class Chapter07 {
       ctx.beginPath();
       ctx.arc(this.lockX, this.lockY, 18, 0, Math.PI * 2);
       ctx.stroke();
+    }
     }
 
     // 门锁十字标记（钥匙孔示意）
@@ -372,6 +384,11 @@ export class Chapter07 {
     grad.addColorStop(1, 'rgba(0, 0, 0, 0)');
     ctx.fillStyle = grad;
     ctx.fillRect(0, 0, this.game.width, this.game.height);
+    const beam = this.game.images.ch7_flashlight_beam;
+    if (beam) {
+      ctx.globalAlpha = 0.28;
+      ctx.drawImage(beam, this.fingerX - 115, this.fingerY - 115, 230, 230);
+    }
     ctx.restore();
   }
 
@@ -442,8 +459,9 @@ export class Chapter07 {
     const progress = this.openProgress;
     const radius = 18 + progress * 800;
 
-    ctx.fillStyle = '#0a0806';
-    ctx.fillRect(0, 0, width, height);
+    const bedroom = this.game.images.ch7_bg_bedroom_night;
+    if (bedroom) ctx.drawImage(bedroom, 0, 0, width, height);
+    else { ctx.fillStyle = '#0a0806'; ctx.fillRect(0, 0, width, height); }
 
     // 从门锁位置扩散暖光
     ctx.save();

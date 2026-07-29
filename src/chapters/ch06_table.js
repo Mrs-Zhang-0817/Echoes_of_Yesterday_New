@@ -364,7 +364,7 @@ export class Chapter06 {
 
   _drawTableBg(ctx, width, height) {
     // 优先使用真实餐桌场景底图，加载失败回退程序化渐变
-    const bgImg = this.game.images.deskBg;
+    const bgImg = this.game.images.ch6_bg_diningroom || this.game.images.deskBg;
     if (bgImg) {
       drawImageCover(ctx, bgImg, width, height);
       // 暖色遮罩保持文字和互动元素可读性

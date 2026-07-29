@@ -346,6 +346,13 @@ export class Chapter08 {
       ctx.fillStyle = 'rgba(10, 6, 4, 0.45)';
       ctx.fillRect(0, 0, this.DW, this.DH);
     }
+    const smile = this.game.images.ch8_mirror_smile;
+    if (smile) {
+      ctx.save();
+      ctx.globalAlpha = 0.42;
+      ctx.drawImage(smile, this.DW * 0.72, this.DH * 0.12, 150, 200);
+      ctx.restore();
+    }
 
     const img = this.game.images.sign;
     if (!img) return;

@@ -1,4 +1,5 @@
 import { roundedRect } from '../utils/sceneUtils.js';
+import { drawArchiveButton, drawArchivePanel, drawArchiveStamp } from '../ui/ArchiveUI.js';
 
 export class Overlay {
   constructor(game) {
@@ -68,16 +69,8 @@ export class Overlay {
     const centerX = width / 2;
     const r = 16;
 
-    // 卡片背景
-    roundedRect(ctx, cx, cy, cardW, cardH, r);
-    const cardGrad = ctx.createLinearGradient(cx, cy, cx, cy + cardH);
-    cardGrad.addColorStop(0, '#fcf5e6');
-    cardGrad.addColorStop(1, '#f0deb4');
-    ctx.fillStyle = cardGrad;
-    ctx.fill();
-    ctx.strokeStyle = 'rgba(42, 26, 12, 0.2)';
-    ctx.lineWidth = 1;
-    ctx.stroke();
+    drawArchivePanel(ctx, cx, cy, cardW, cardH, '记忆档案');
+    drawArchiveStamp(ctx, cx + cardW - 42, cy + 38, '已记录');
 
     // 标题
     ctx.fillStyle = '#2a1a0c';
@@ -110,13 +103,7 @@ export class Overlay {
       const by = btnTop;
       btns[i].bbox = { x: bx, y: by, w: btnW, h: btnH };
 
-      roundedRect(ctx, bx, by, btnW, btnH, 8);
-      ctx.fillStyle = '#4d3420';
-      ctx.fill();
-
-      ctx.fillStyle = '#fcf5e6';
-      ctx.font = '600 16px system-ui, "PingFang SC", sans-serif';
-      ctx.fillText(btns[i].text, bx + btnW / 2, by + btnH / 2);
+      btns[i].bbox = drawArchiveButton(ctx, bx, by, btnW, btnH, btns[i].text);
     }
 
     ctx.restore();

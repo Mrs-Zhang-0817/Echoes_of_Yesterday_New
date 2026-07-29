@@ -84,10 +84,24 @@ export class Chapter02 {
 
     const { safeMargin } = DEFAULT_PUZZLE_LAYOUT;
     const piece = this.draggedPiece;
+    const previousX = piece.x;
+    const previousY = piece.y;
     piece.x = Math.max(safeMargin,
       Math.min(this.game.width - piece.width - safeMargin, point.x - this.offset.x));
     piece.y = Math.max(safeMargin,
       Math.min(this.game.height - piece.height - safeMargin, point.y - this.offset.y));
+
+    if (DEFAULT_PUZZLE_LAYOUT.mobileInstantSnap && point.pointerType === 'touch' &&
+      pathPassesNearTarget(previousX, previousY, piece.x, piece.y, piece.targetX, piece.targetY, DEFAULT_PUZZLE_LAYOUT.touchSnapRadius)) {
+      piece.x = piece.targetX;
+      piece.y = piece.targetY;
+      piece.width = piece.targetWidth;
+      piece.height = piece.targetHeight;
+      piece.placed = true;
+      piece.dragging = false;
+      this.hasMoved = false;
+      this.finishPlacement(piece);
+    }
   }
 
   handleUp(point) {
@@ -210,6 +224,18 @@ export class Chapter02 {
       }
     }
     this.drawParticles(ctx);
+
+    // 完成拼图后以正式闪回序列替代原来的纯色淡出。
+    if (this.phase === 'completeHold' || this.phase === 'fadeMemory') {
+      const frame = Math.min(5, Math.floor(this.phaseTime * 1.7) + 1);
+      const image = this.game.images[`ch2_flashback_0${frame}`];
+      if (image) {
+        ctx.save();
+        ctx.globalAlpha = this.phase === 'fadeMemory' ? Math.min(1, this.phaseTime / 0.35) : 0.32;
+        ctx.drawImage(image, 0, 0, width, height);
+        ctx.restore();
+      }
+    }
 
     const panel = DEFAULT_PUZZLE_LAYOUT.panel;
     if (this.phase === 'completeHold') drawPrompt(ctx, '记忆恢复了一些……', width / 2, 55, 0.6);

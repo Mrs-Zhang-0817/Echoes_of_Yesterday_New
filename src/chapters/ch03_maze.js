@@ -131,58 +131,27 @@ export class Chapter03 {
   render(ctx) {
     const { width, height } = this.game;
 
-    // 程序化地图背景：街道网格 + 噪点 + 暗角
-    ctx.fillStyle = '#1a1814';
-    ctx.fillRect(0, 0, width, height);
-
-    // 道路网格线（固定种子，交错偏移模拟不规则街区）
-    ctx.save();
-    ctx.strokeStyle = 'rgba(70, 64, 56, 0.18)';
-    ctx.lineWidth = 1;
-    for (let x = 0; x < width; x += 80) {
-      ctx.beginPath();
-      ctx.moveTo(x + ((x * 7) % 13 - 6), 0);
-      ctx.lineTo(x + ((x * 7) % 13 - 6), height);
-      ctx.stroke();
+    // 交互节点坐标按地图的 16:9 画布标注，地图本身就是关卡底图。
+    const map = this.game.images.ch3_map_phone;
+    if (map) {
+      const scale = Math.max(width / map.width, height / map.height);
+      ctx.drawImage(map, (width - map.width * scale) / 2, (height - map.height * scale) / 2, map.width * scale, map.height * scale);
+    } else {
+      ctx.fillStyle = '#1a1814';
+      ctx.fillRect(0, 0, width, height);
     }
-    for (let y = 0; y < height; y += 80) {
-      ctx.beginPath();
-      ctx.moveTo(0, y + ((y * 11) % 13 - 6));
-      ctx.lineTo(width, y + ((y * 11) % 13 - 6));
-      ctx.stroke();
-    }
-    ctx.restore();
 
-    // 散布建筑块（小矩形，模拟街区建筑）
-    ctx.save();
-    ctx.fillStyle = 'rgba(45, 40, 35, 0.5)';
-    for (let i = 0; i < 80; i++) {
-      const bx = ((i * 173 + 89) % (width - 40));
-      const by = ((i * 241 + 137) % (height - 40));
-      const bw = 20 + ((i * 67) % 40);
-      const bh = 14 + ((i * 53) % 26);
-      ctx.fillRect(bx, by, bw, bh);
+    if (this.phase === 'success') {
+      const frame = Math.min(4, Math.floor(this.phaseTime * 2) + 1);
+      const image = this.game.images[`ch3_cityup_0${frame}`];
+      if (image) {
+        ctx.save();
+        ctx.globalAlpha = Math.min(1, this.phaseTime / 0.25);
+        ctx.drawImage(image, 0, 0, width, height);
+        ctx.restore();
+      }
     }
-    ctx.restore();
 
-    // 地图噪点
-    ctx.save();
-    for (let i = 0; i < 200; i++) {
-      const nx = ((i * 137 + 42) % width);
-      const ny = ((i * 251 + 97) % height);
-      ctx.fillStyle = `rgba(60, 55, 45, ${0.03 + (i % 5) * 0.005})`;
-      ctx.beginPath();
-      ctx.arc(nx, ny, 1 + (i % 3) * 0.5, 0, Math.PI * 2);
-      ctx.fill();
-    }
-    ctx.restore();
-
-    // 暗角
-    const vignette = ctx.createRadialGradient(width / 2, height / 2, 150, width / 2, height / 2, 520);
-    vignette.addColorStop(0, 'rgba(0,0,0,0)');
-    vignette.addColorStop(1, 'rgba(0,0,0,0.4)');
-    ctx.fillStyle = vignette;
-    ctx.fillRect(0, 0, width, height);
 
     this.drawHoverNode(ctx);
     this.drawPlayerLine(ctx);

@@ -3,6 +3,8 @@ const path = require('path');
 
 const SRC_DIR = path.join(__dirname, 'src');
 const OUT_DIR = path.join(__dirname, 'build_out');
+const IMAGE_SRC_DIR = path.join(__dirname, 'assets', 'images');
+const IMAGE_OUT_DIR = path.join(OUT_DIR, 'assets', 'images');
 
 // 拼接顺序：确保依赖在前
 const files = [
@@ -18,6 +20,7 @@ const files = [
   'src/utils/puzzleLayout.js',
   'src/utils/returnNightLayout.js',
   'src/utils/tableLayout.js',
+  'src/ui/ArchiveUI.js',
   // chapter layouts
   'src/chapters/ch03_mazeLayout.js',
   // chapters (按章节顺序 01→10)
@@ -117,5 +120,7 @@ ${combined}
 </body>
 </html>`;
 
+fs.mkdirSync(OUT_DIR, { recursive: true });
 fs.writeFileSync(path.join(OUT_DIR, 'index.html'), html, 'utf8');
+fs.cpSync(IMAGE_SRC_DIR, IMAGE_OUT_DIR, { recursive: true, force: true });
 console.log(`Built: ${path.join(OUT_DIR, 'index.html')} (${Buffer.byteLength(html, 'utf8')} bytes)`);
