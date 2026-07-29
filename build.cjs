@@ -20,12 +20,17 @@ const files = [
   'src/utils/tableLayout.js',
   // chapter layouts
   'src/chapters/ch03_mazeLayout.js',
-  // chapters (按章节顺序)
+  // chapters (按章节顺序 01→10)
+  'src/chapters/ch01_intro.js',
   'src/chapters/ch02_puzzle.js',
   'src/chapters/ch03_maze.js',
+  'src/chapters/ch04_police.js',
   'src/chapters/ch05_door.js',
   'src/chapters/ch06_table.js',
+  'src/chapters/ch07_night.js',
   'src/chapters/ch08_sign.js',
+  'src/chapters/ch09_chime.js',
+  'src/chapters/ch10_report.js',
   // main entry
   'src/main_new.js',
 ];

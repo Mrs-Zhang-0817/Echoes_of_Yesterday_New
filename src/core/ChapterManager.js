@@ -6,6 +6,7 @@ export class ChapterManager {
     this.pendingChapter = null;
     this.transition = { phase: 'idle', alpha: 0, duration: 0.3 };
     this.chapterOrder = [];
+    this._completeFired = false;
   }
 
   register(name, ChapterClass) {
@@ -54,8 +55,9 @@ export class ChapterManager {
   update(dt) {
     this.currentChapter?.update?.(dt);
 
-    // 检查是否完成
-    if (this.currentChapter?.isComplete && this.transition.phase === 'idle') {
+    // 检查是否完成 → 弹 overlay（只弹一次）
+    if (this.currentChapter?.isComplete && !this._completeFired && this.transition.phase === 'idle') {
+      this._completeFired = true;
       this.game.overlay?.show?.({
         type: 'complete',
         title: this.currentChapter.completeTitle || '记忆恢复了一些……',
@@ -64,13 +66,10 @@ export class ChapterManager {
           { text: '继续下一章节', action: () => this.next() }
         ]
       });
-      // 只弹一次
       this.transition.phase = 'blocked';
-      return;
     }
 
-    if (this.transition.phase === 'blocked') return;
-
+    // blocked 状态下也执行过渡：overlay 按钮的 action 已调 switchTo/next → phase='out'
     if (this.transition.phase === 'out') {
       this.transition.alpha += dt / this.transition.duration;
       if (this.transition.alpha >= 1) {
@@ -84,6 +83,7 @@ export class ChapterManager {
       if (this.transition.alpha <= 0) {
         this.transition.alpha = 0;
         this.transition.phase = 'idle';
+        this._completeFired = false;
       }
     }
   }

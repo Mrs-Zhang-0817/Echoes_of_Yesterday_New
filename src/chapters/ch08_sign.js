@@ -94,8 +94,6 @@ export class Chapter08 {
     this.PASS_SCORE = 80;
     this.TIMEOUT_SEC = 10;
     this._completed = false;
-
-    // 缩放参数
     const imgW = 1448, imgH = 1086;
     const sc = Math.max(this.DW / imgW, this.DH / imgH);
     const cropIx = 910, cropIy = 772, cropIw = 510, cropIh = 118;
@@ -135,14 +133,22 @@ export class Chapter08 {
   }
 
   handleDown(point) {
+    // 弹层优先消除
+    if (this.timeoutFired || this.showHint) {
+      this.checkButtonClick(point);
+      return;
+    }
+    // 按钮区域优先（底部 72px 高度区域）
+    if (point.y >= this.DH - 72) {
+      this.checkButtonClick(point);
+      return;
+    }
     if (this.phase === 'writing' && !this.passed) {
+      if (this.wPid != null) return; // 已有激活手指，忽略其它
       this.wDown = true;
       this.wPid = point.pointerId;
       this.cur = [point];
-      return;
     }
-    // 检查弹层按钮（超时/提示/通过）
-    this.checkButtonClick(point);
   }
 
   handleMove(point) {
@@ -155,6 +161,7 @@ export class Chapter08 {
 
   handleUp(point) {
     if (this.phase !== 'writing' || !this.wDown) return;
+    if (point.pointerId !== this.wPid) return; // 忽略非激活手指
     this.wDown = false;
     this.wPid = null;
     if (this.cur.length >= 4) {
@@ -189,7 +196,6 @@ export class Chapter08 {
     if (this.timeoutFired) {
       this.timeoutFired = false;
       this.elapsed = 0;
-      this.totalDT = 0;
       try { navigator.vibrate?.(10); } catch {}
       return;
     }
@@ -198,14 +204,10 @@ export class Chapter08 {
       try { navigator.vibrate?.(10); } catch {}
       return;
     }
-    if (this._completed) {
-      this.resetAll();
-      return;
-    }
   }
 
   submit() {
-    if (this.passed || this.strokes.length < 5) return;
+    if (this.passed || this.strokes.length < 6) return;
     if (this.matchSignature()) {
       this.passed = true;
       this._completed = true;
@@ -274,8 +276,6 @@ export class Chapter08 {
   }
 
   update(dt) {
-    this.totalDT += dt;
-
     // phase transitions
     if (this.phase === 'sign') {
       this.phaseTime += dt;
@@ -296,13 +296,8 @@ export class Chapter08 {
         this.timeoutFired = false;
       }
     } else if (this.phase === 'writing' && this.timeoutActive && !this.passed) {
-      this.totalDT += dt;
-      // 用 totalDT 的方式计时（简化：每10次 update 约1秒）
-      // 改用 dt 累加
       const prevElapsed = this.elapsed;
       this.elapsed += dt;
-      const newSec = Math.floor(this.elapsed);
-      const prevSec = Math.floor(prevElapsed);
       if (this.elapsed >= this.TIMEOUT_SEC && !this.timeoutFired) {
         this.timeoutFired = true;
       }
@@ -325,10 +320,10 @@ export class Chapter08 {
       this.drawButton(ctx, this.DW - 110 - 20, this.DH - 40 - 16, 110, 40, '提 交', '#f5e6c8', '#4d3420');
     }
 
-    // 弹层
+    // 自有弹层（超时/提示）保留 Canvas 绘制，完成弹层走统一 Overlay 系统
     if (this.timeoutFired) this.renderOverlay(ctx, '时间过了许久', '连笔写——手记得的，疾病夺不走', '再试试');
     if (this.showHint) this.renderOverlay(ctx, '笔迹畸变规则', '横↔竖、撇↔捺，试试连笔写', '明白了');
-    if (this._completed) this.renderOverlay(ctx, '辨认成功', '——\n李向阳', '再写一次', true);
+    // _completed 时由 ChapterManager.update() 检测 isComplete 自动弹统一 Overlay
   }
 
   renderSign(ctx) {
