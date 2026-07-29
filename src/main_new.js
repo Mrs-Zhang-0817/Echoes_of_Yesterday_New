@@ -184,7 +184,9 @@ async function boot() {
     // 从进度恢复（clamp 到已注册章节，防止白屏）
     const REGISTERED = ['ch01','ch02','ch03','ch04','ch05','ch06','ch07','ch08','ch09','ch10'];
     const saved = game.progress.load();
-    let startChapter = saved?.chapter ? `ch${String(saved.chapter).padStart(2, '0')}` : 'ch01';
+    // P1-2 修复：saved.chapter 记录的是"已完成章号"，恢复时应从下一章开始，否则每次刷新都要重打刚打完的那章
+    const resumeNum = saved?.chapter ? Math.min(saved.chapter + 1, 10) : 1;
+    let startChapter = `ch${String(resumeNum).padStart(2, '0')}`;
     if (!REGISTERED.includes(startChapter)) {
       const chNum = parseInt(startChapter.replace('ch', ''), 10);
       const closest = REGISTERED.map(r => parseInt(r.replace('ch', ''), 10))
