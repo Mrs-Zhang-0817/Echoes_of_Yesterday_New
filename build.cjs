@@ -7,6 +7,8 @@ const IMAGE_SRC_DIR = path.join(__dirname, 'assets', 'images');
 const IMAGE_OUT_DIR = path.join(OUT_DIR, 'assets', 'images');
 const VENDOR_SRC_DIR = path.join(__dirname, 'assets', 'vendor');
 const VENDOR_OUT_DIR = path.join(OUT_DIR, 'assets', 'vendor');
+const CHAPTERS_PATH = path.join(SRC_DIR, 'data', 'chapters.json');
+const ASSET_MANIFEST_PATH = path.join(SRC_DIR, 'data', 'assetManifest.js');
 
 // 拼接顺序：确保依赖在前
 const files = [
@@ -47,7 +49,11 @@ const files = [
   'src/main_new.js',
 ];
 
-let combined = '';
+const gameChapters = `const GAME_CHAPTERS = ${fs.readFileSync(CHAPTERS_PATH, 'utf8')};\n`;
+const assetManifest = fs.readFileSync(ASSET_MANIFEST_PATH, 'utf8')
+  .replace(/^export\s+default\s+assetManifest;?\s*$/m, '');
+
+let combined = `${gameChapters}\n${assetManifest}\n`;
 for (const file of files) {
   const fullPath = path.join(__dirname, file);
   if (!fs.existsSync(fullPath)) {
@@ -58,6 +64,9 @@ for (const file of files) {
   // 移除 import 和 export 语句
   content = content.replace(/^import\s+.*$/gm, '');
   content = content.replace(/^export\s+/gm, '');
+  if (file === 'src/ui/ArtworkMemoryReport.js' || file === 'src/main_new.js') {
+    content = content.replace(/\bCHAPTERS\b/g, 'GAME_CHAPTERS');
+  }
   combined += `\n// ---- ${file} ----\n` + content + '\n';
 }
 

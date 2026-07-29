@@ -26,3 +26,9 @@ build_out/
 .playwright-mcp/
 .tmp_feishu_imgs/
 build_out/screenshots/
+
+# 本地美术/审计资源（不进版本库，仅本地使用）
+美术资产/
+ch07-assets/
+ch07-assets 2/
+visual_check_report/
