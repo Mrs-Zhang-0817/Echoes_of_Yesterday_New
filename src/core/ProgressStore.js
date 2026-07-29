@@ -25,7 +25,7 @@ export class ProgressStore {
     if (!data.completed.includes(chapterNum)) {
       data.completed.push(chapterNum);
     }
-    data.chapter = Math.min(chapterNum + 1, 10); // 存下一章编号，通关后刷新跳转正确
+    data.chapter = Math.max(data.chapter, chapterNum);
     data.memory = Math.max(data.memory, memoryValue);
     data.ts = Date.now();
     this.save(data);

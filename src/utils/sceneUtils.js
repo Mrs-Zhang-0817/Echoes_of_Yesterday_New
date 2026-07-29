@@ -13,15 +13,8 @@ export function drawImageContain(ctx, image, width, height) {
 }
 
 export function roundedRect(ctx, x, y, width, height, radius) {
-  const r = Math.min(radius, width / 2, height / 2);
   ctx.beginPath();
-  ctx.moveTo(x + r, y);
-  ctx.lineTo(x + width - r, y);
-  ctx.arcTo(x + width, y, x + width, y + r, r);
-  ctx.arcTo(x + width, y + height, x + width, y + height - r, r);
-  ctx.arcTo(x + width - r, y + height, x, y + height, r);
-  ctx.arcTo(x, y + r, x, y, r);
-  ctx.closePath();
+  ctx.roundRect(x, y, width, height, radius);
 }
 
 export function drawPrompt(ctx, text, x, y, emphasis = 0) {

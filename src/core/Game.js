@@ -15,17 +15,10 @@ export class Game {
     if (!this.running) return;
     const dt = Math.min((timestamp - this.lastTime) / 1000, 0.1);
     this.lastTime = timestamp;
-
-    // ChapterManager 驱动（统一架构）
-    this.game.chapterManager.update(dt);
-    this.game.overlay?.update?.(dt);
-
-    // 渲染
+    this.game.sceneManager.update(dt);
     this.game.ctx.clearRect(0, 0, this.game.width, this.game.height);
-    this.game.chapterManager.currentChapter?.render?.(this.game.ctx);
-    this.game.chapterManager.renderTransition(this.game.ctx);
-    this.game.overlay?.render?.(this.game.ctx);
-
+    this.game.sceneManager.currentScene?.render(this.game.ctx);
+    this.game.sceneManager.renderTransition(this.game.ctx);
     requestAnimationFrame(next => this.loop(next));
   }
 }

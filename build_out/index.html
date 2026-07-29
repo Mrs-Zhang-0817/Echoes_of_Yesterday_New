@@ -77,17 +77,10 @@ class Game {
     if (!this.running) return;
     const dt = Math.min((timestamp - this.lastTime) / 1000, 0.1);
     this.lastTime = timestamp;
-
-    // ChapterManager 驱动（统一架构）
-    this.game.chapterManager.update(dt);
-    this.game.overlay?.update?.(dt);
-
-    // 渲染
+    this.game.sceneManager.update(dt);
     this.game.ctx.clearRect(0, 0, this.game.width, this.game.height);
-    this.game.chapterManager.currentChapter?.render?.(this.game.ctx);
-    this.game.chapterManager.renderTransition(this.game.ctx);
-    this.game.overlay?.render?.(this.game.ctx);
-
+    this.game.sceneManager.currentScene?.render(this.game.ctx);
+    this.game.sceneManager.renderTransition(this.game.ctx);
     requestAnimationFrame(next => this.loop(next));
   }
 }
@@ -172,46 +165,16 @@ class Loader {
   static loadImages(manifest, onProgress = () => {}) {
     const entries = Object.entries(manifest);
     let loaded = 0;
-    const total = entries.length;
 
-    return Promise.all(entries.map(([key, source]) => new Promise((resolve) => {
-      let retried = false;
-
-      function tryLoad() {
-        const image = new Image();
-        image.onload = () => {
-          loaded += 1;
-          onProgress(loaded, total, key);
-          resolve([key, image]);
-        };
-        image.onerror = () => {
-          if (!retried) {
-            retried = true;
-            // 重试 1 次：加随机 query 绕过缓存
-            const sep = source.includes('?') ? '&' : '?';
-            image.src = source + sep + '_retry=' + Math.random().toString(36).slice(2);
-            return;
-          }
-          // 失败后生成占位图，不阻塞整体加载
-          loaded += 1;
-          onProgress(loaded, total, key);
-          // 生成占位图（1280×720 纯色）
-          const canvas = document.createElement('canvas');
-          canvas.width = 1280;
-          canvas.height = 720;
-          const ctx = canvas.getContext('2d');
-          ctx.fillStyle = '#8B7355';
-          ctx.fillRect(0, 0, 1280, 720);
-          const placeholder = new Image();
-          placeholder.src = canvas.toDataURL();
-          // 标记占位图
-          placeholder._placeholder = true;
-          resolve([key, placeholder]);
-        };
-        image.src = source;
-      }
-
-      tryLoad();
+    return Promise.all(entries.map(([key, source]) => new Promise((resolve, reject) => {
+      const image = new Image();
+      image.onload = () => {
+        loaded += 1;
+        onProgress(loaded, entries.length, key);
+        resolve([key, image]);
+      };
+      image.onerror = () => reject(new Error(`图片加载失败：${source}`));
+      image.src = source;
     }))).then(images => Object.fromEntries(images));
   }
 }
@@ -226,7 +189,6 @@ class ChapterManager {
     this.pendingChapter = null;
     this.transition = { phase: 'idle', alpha: 0, duration: 0.3 };
     this.chapterOrder = [];
-    this._completeFired = false;
   }
 
   register(name, ChapterClass) {
@@ -275,9 +237,8 @@ class ChapterManager {
   update(dt) {
     this.currentChapter?.update?.(dt);
 
-    // 检查是否完成 → 弹 overlay（只弹一次）
-    if (this.currentChapter?.isComplete && !this._completeFired && this.transition.phase === 'idle') {
-      this._completeFired = true;
+    // 检查是否完成
+    if (this.currentChapter?.isComplete && this.transition.phase === 'idle') {
       this.game.overlay?.show?.({
         type: 'complete',
         title: this.currentChapter.completeTitle || '记忆恢复了一些……',
@@ -286,10 +247,13 @@ class ChapterManager {
           { text: '继续下一章节', action: () => this.next() }
         ]
       });
+      // 只弹一次
       this.transition.phase = 'blocked';
+      return;
     }
 
-    // blocked 状态下也执行过渡：overlay 按钮的 action 已调 switchTo/next → phase='out'
+    if (this.transition.phase === 'blocked') return;
+
     if (this.transition.phase === 'out') {
       this.transition.alpha += dt / this.transition.duration;
       if (this.transition.alpha >= 1) {
@@ -303,7 +267,6 @@ class ChapterManager {
       if (this.transition.alpha <= 0) {
         this.transition.alpha = 0;
         this.transition.phase = 'idle';
-        this._completeFired = false;
       }
     }
   }
@@ -346,7 +309,7 @@ class ProgressStore {
     if (!data.completed.includes(chapterNum)) {
       data.completed.push(chapterNum);
     }
-    data.chapter = Math.min(chapterNum + 1, 10); // 存下一章编号，通关后刷新跳转正确
+    data.chapter = Math.max(data.chapter, chapterNum);
     data.memory = Math.max(data.memory, memoryValue);
     data.ts = Date.now();
     this.save(data);
@@ -362,53 +325,52 @@ class ProgressStore {
 
 
 // ---- src/core/Overlay.js ----
+
+
 class Overlay {
   constructor(game) {
     this.game = game;
-    this.active = null;
+    this.active = null; // null 或 { type, title, message, buttons, time }
     this._inputHandlers = null;
-    this._savedHandlers = null;
   }
 
   show(config) {
-    if (this.active) return;
     this.active = { ...config, time: 0 };
-    // 保存当前 handler，hide 时还原
-    this._savedHandlers = { ...this.game.input.handlers };
-    this.game.input.setHandlers({
+    // 接管输入：在弹层激活时，原始章节的 input handler 被临时覆盖
+    this._inputHandlers = {
       down: point => this.handleDown(point),
       move: () => {},
       up: () => {},
       cancel: () => {},
-    });
+    };
   }
 
   hide() {
     this.active = null;
-    if (this._savedHandlers && Object.keys(this._savedHandlers).length > 0) {
-      this.game.input.setHandlers(this._savedHandlers);
-    } else {
-      this.game.input.setHandlers();
-    }
-    this._savedHandlers = null;
+    // 恢复时由章节的 onEnter 重新设置 handler
   }
 
-  isActive() { return this.active !== null; }
+  isActive() {
+    return this.active !== null;
+  }
 
   handleDown(point) {
     if (!this.active) return;
     const buttons = this.active.buttons || [];
-    for (let i = 0; i < buttons.length; i++) {
-      const btn = buttons[i];
-      const bbox = btn.bbox;
-      if (!bbox) continue;
-      if (point.x >= bbox.x && point.x <= bbox.x + bbox.w &&
-          point.y >= bbox.y && point.y <= bbox.y + bbox.h) {
+    for (const btn of buttons) {
+      if (this.hitButton(point, btn)) {
         btn.action?.();
         this.hide();
         return;
       }
     }
+  }
+
+  hitButton(point, btn) {
+    const bbox = btn.bbox;
+    if (!bbox) return false;
+    return point.x >= bbox.x && point.x <= bbox.x + bbox.w &&
+           point.y >= bbox.y && point.y <= bbox.y + bbox.h;
   }
 
   update(dt) {
@@ -430,18 +392,9 @@ class Overlay {
     const cardH = 280;
     const cx = (width - cardW) / 2;
     const cy = (height - cardH) / 2;
-    const centerX = width / 2;
 
     // 卡片背景
-    const r = 16;
-    ctx.beginPath();
-    ctx.moveTo(cx + r, cy);
-    ctx.lineTo(cx + cardW - r, cy);
-    ctx.arcTo(cx + cardW, cy, cx + cardW, cy + r, r);
-    ctx.arcTo(cx + cardW, cy + cardH, cx + cardW - r, cy + cardH, r);
-    ctx.arcTo(cx + r, cy + cardH, cx, cy + cardH, r);
-    ctx.arcTo(cx, cy + r, cx, cy, r);
-    ctx.closePath();
+    roundedRect(ctx, cx, cy, cardW, cardH, 16);
     const cardGrad = ctx.createLinearGradient(cx, cy, cx, cy + cardH);
     cardGrad.addColorStop(0, '#fcf5e6');
     cardGrad.addColorStop(1, '#f0deb4');
@@ -456,16 +409,13 @@ class Overlay {
     ctx.font = 'bold 24px system-ui, "PingFang SC", sans-serif';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    ctx.fillText(config.title, centerX, cy + 48);
+    ctx.fillText(config.title, width / 2, cy + 48);
 
-    // 消息（支持多行）
+    // 消息
     if (config.message) {
       ctx.fillStyle = '#4d3420';
       ctx.font = '17px system-ui, "PingFang SC", sans-serif';
-      const lines = config.message.split('\n');
-      lines.forEach((line, i) => {
-        ctx.fillText(line, centerX, cy + 100 + i * 26);
-      });
+      ctx.fillText(config.message, width / 2, cy + 100);
     }
 
     // 按钮
@@ -475,23 +425,18 @@ class Overlay {
     const gap = 16;
     const totalBtnW = btns.length * btnW + (btns.length - 1) * gap;
     const startBtnX = (width - totalBtnW) / 2;
-    const btnTop = cy + cardH - 68;
+    const btnY = cy + cardH - 50 - btnH / 2;
+
+    config._btnRects = [];
 
     for (let i = 0; i < btns.length; i++) {
       const bx = startBtnX + i * (btnW + gap);
-      const by = btnTop;
+      const by = btnY - btnH / 2;
+      config._btnRects.push({ x: bx, y: by, w: btnW, h: btnH });
       btns[i].bbox = { x: bx, y: by, w: btnW, h: btnH };
 
       // 按钮背景
-      ctx.beginPath();
-      const br = 8;
-      ctx.moveTo(bx + br, by);
-      ctx.lineTo(bx + btnW - br, by);
-      ctx.arcTo(bx + btnW, by, bx + btnW, by + br, br);
-      ctx.arcTo(bx + btnW, by + btnH, bx + btnW - br, by + btnH, br);
-      ctx.arcTo(bx + br, by + btnH, bx, by + btnH, br);
-      ctx.arcTo(bx, by + br, bx, by, br);
-      ctx.closePath();
+      roundedRect(ctx, bx, by, btnW, btnH, 8);
       ctx.fillStyle = '#4d3420';
       ctx.fill();
 
@@ -522,15 +467,8 @@ function drawImageContain(ctx, image, width, height) {
 }
 
 function roundedRect(ctx, x, y, width, height, radius) {
-  const r = Math.min(radius, width / 2, height / 2);
   ctx.beginPath();
-  ctx.moveTo(x + r, y);
-  ctx.lineTo(x + width - r, y);
-  ctx.arcTo(x + width, y, x + width, y + r, r);
-  ctx.arcTo(x + width, y + height, x + width, y + height - r, r);
-  ctx.arcTo(x + width - r, y + height, x, y + height, r);
-  ctx.arcTo(x, y + r, x, y, r);
-  ctx.closePath();
+  ctx.roundRect(x, y, width, height, radius);
 }
 
 function drawPrompt(ctx, text, x, y, emphasis = 0) {
@@ -1070,305 +1008,26 @@ function hitEnd(x, y) {
 }
 
 
-// ---- src/chapters/ch01_intro.js ----
-
-
-// 镜子椭圆参数
-const MIRROR_CX = 640;
-const MIRROR_CY = 340;
-const MIRROR_RX = 250;
-const MIRROR_RY = 325;
-const FRAME_WIDTH = 14;
-const FRAME_INNER_RX = MIRROR_RX - FRAME_WIDTH;
-const FRAME_INNER_RY = MIRROR_RY - FRAME_WIDTH;
-
-class Chapter01 {
-  constructor(game) {
-    this.game = game;
-    this.phase = 'idle';
-    this.phaseTime = 0;
-    this._completed = false;
-    this.clickCount = 0;       // idle 阶段点击次数计数
-    this.shatterParticles = []; // shattering 阶段的碎片粒子
-    this.cracks = [];          // 裂纹线段列表
-    this.cracksVisible = false;
-    this.breathTime = Math.random() * Math.PI * 2; // 呼吸动画起始相位
-  }
-
-  get isComplete() { return this._completed; }
-  get completeTitle() { return '回忆的碎片'; }
-  get completeMessage() { return '镜中的自己……是谁？'; }
-
-  onEnter() {
-    this.game.input.setHandlers({
-      down: point => this.handleDown(point),
-      move: () => {},
-      up: () => {},
-      cancel: () => {},
-    });
-  }
-
-  onExit() {
-    this.game.input.setHandlers();
-  }
-
-  handleDown(point) {
-    if (this.phase === 'complete') return;
-
-    if (this.phase === 'shattering') return;
-
-    // idle: 点击镜子热区或累计点击 3 次都触发碎裂
-    const dx = point.x - MIRROR_CX;
-    const dy = point.y - MIRROR_CY;
-    const inMirror = (dx * dx) / (MIRROR_RX * MIRROR_RX) + (dy * dy) / (MIRROR_RY * MIRROR_RY) <= 1;
-
-    this.clickCount++;
-    if (inMirror || this.clickCount >= 3) {
-      this.startShattering();
-    }
-  }
-
-  startShattering() {
-    this.phase = 'shattering';
-    this.phaseTime = 0;
-    this.cracksVisible = false;
-    this.shatterParticles = [];
-    this.cracks = [];
-
-    // 生成 30 个碎片粒子
-    for (let i = 0; i < 30; i++) {
-      const angle = Math.random() * Math.PI * 2;
-      const speed = 80 + Math.random() * 220;
-      const size = 4 + Math.random() * 10;
-      // 粒子颜色：铜色到白色渐变
-      const t = Math.random();
-      const r = Math.round(180 + t * 75);
-      const g = Math.round(130 + t * 125);
-      const b = Math.round(70 + t * 185);
-      const color = `rgb(${r},${g},${b})`;
-      this.shatterParticles.push({
-        x: MIRROR_CX,
-        y: MIRROR_CY,
-        vx: Math.cos(angle) * speed,
-        vy: Math.sin(angle) * speed,
-        size,
-        rotation: 0,
-        spin: (Math.random() - 0.5) * 8,
-        color,
-        life: 1.5 + Math.random() * 1.0,
-      });
-    }
-
-    // 生成裂纹线（5-7 条从中心辐射的随机锯齿线）
-    const crackCount = 5 + Math.floor(Math.random() * 3);
-    for (let i = 0; i < crackCount; i++) {
-      const baseAngle = (Math.PI * 2 / crackCount) * i + (Math.random() - 0.5) * 0.6;
-      const length = 120 + Math.random() * 200;
-      const segments = [];
-      let cx = MIRROR_CX;
-      let cy = MIRROR_CY;
-      let segs = 3 + Math.floor(Math.random() * 4);
-      for (let s = 0; s < segs; s++) {
-        const segAngle = baseAngle + (Math.random() - 0.5) * 0.4;
-        const segLen = length / segs * (0.7 + Math.random() * 0.6);
-        const nx = cx + Math.cos(segAngle) * segLen;
-        const ny = cy + Math.sin(segAngle) * segLen;
-        segments.push({ x1: cx, y1: cy, x2: nx, y2: ny });
-        cx = nx;
-        cy = ny;
-      }
-      this.cracks.push(segments);
-    }
-
-    try { navigator.vibrate?.(30); } catch {}
-  }
-
-  update(dt) {
-    this.breathTime += dt;
-
-    if (this.phase === 'idle') return;
-
-    if (this.phase === 'shattering') {
-      this.phaseTime += dt;
-
-      // 0.3 秒后显示裂纹
-      if (this.phaseTime >= 0.3 && !this.cracksVisible) {
-        this.cracksVisible = true;
-      }
-
-      // 更新粒子物理
-      const gravity = 80;
-      for (const p of this.shatterParticles) {
-        p.x += p.vx * dt;
-        p.y += p.vy * dt;
-        p.vy += gravity * dt;
-        p.rotation += p.spin * dt;
-        p.life -= dt;
-      }
-
-      // 移除生命周期结束的粒子
-      this.shatterParticles = this.shatterParticles.filter(p => p.life > 0);
-
-      // 2 秒后进入 complete
-      if (this.phaseTime >= 2) {
-        this.phase = 'complete';
-        this._completed = true;
-        this.game.progress.markChapterComplete(1, 5);
-      }
-    }
-  }
-
-  render(ctx) {
-    const { width, height } = this.game;
-
-    // === 背景：优先使用主界面底图，加载失败回退程序化渐变 ===
-    const bgImg = this.game.images.mainMenuBg;
-    if (bgImg && !bgImg._placeholder) {
-      drawImageCover(ctx, bgImg, width, height);
-      // 压暗遮罩，保证镜面与文字可读性
-      ctx.fillStyle = 'rgba(13, 8, 5, 0.55)';
-      ctx.fillRect(0, 0, width, height);
-    } else {
-      const bgGrad = ctx.createRadialGradient(width / 2, height / 2, 100, width / 2, height / 2, 500);
-      bgGrad.addColorStop(0, '#1a1010');
-      bgGrad.addColorStop(1, '#0d0805');
-      ctx.fillStyle = bgGrad;
-      ctx.fillRect(0, 0, width, height);
-    }
-
-    // === 镜框光晕 ===
-    const glowGrad = ctx.createRadialGradient(MIRROR_CX, MIRROR_CY, MIRROR_RY * 0.3, MIRROR_CX, MIRROR_CY, MIRROR_RY * 1.2);
-    glowGrad.addColorStop(0, 'rgba(180, 140, 80, 0.12)');
-    glowGrad.addColorStop(1, 'rgba(180, 140, 80, 0)');
-    ctx.fillStyle = glowGrad;
-    ctx.beginPath();
-    ctx.ellipse(MIRROR_CX, MIRROR_CY, MIRROR_RX + 30, MIRROR_RY + 30, 0, 0, Math.PI * 2);
-    ctx.fill();
-
-    // === 铜色镜框（外椭圆） ===
-    ctx.save();
-    ctx.strokeStyle = '#b8860b';
-    ctx.lineWidth = FRAME_WIDTH;
-    ctx.beginPath();
-    ctx.ellipse(MIRROR_CX, MIRROR_CY, MIRROR_RX, MIRROR_RY, 0, 0, Math.PI * 2);
-    ctx.stroke();
-
-    // 镜框高光线（上半内侧）
-    ctx.strokeStyle = 'rgba(230, 200, 120, 0.4)';
-    ctx.lineWidth = 2;
-    ctx.beginPath();
-    ctx.ellipse(MIRROR_CX, MIRROR_CY - 4, MIRROR_RX - 2, MIRROR_RY - 6, 0, Math.PI * 0.15, Math.PI * 0.85);
-    ctx.stroke();
-    ctx.restore();
-
-    // === 镜面（椭圆内深灰区域） ===
-    ctx.save();
-    ctx.beginPath();
-    ctx.ellipse(MIRROR_CX, MIRROR_CY, FRAME_INNER_RX, FRAME_INNER_RY, 0, 0, Math.PI * 2);
-    ctx.clip();
-
-    // 镜面底色
-    const mirrorGrad = ctx.createRadialGradient(MIRROR_CX - 40, MIRROR_CY - 40, 30, MIRROR_CX, MIRROR_CY, FRAME_INNER_RY);
-    mirrorGrad.addColorStop(0, '#3a3528');
-    mirrorGrad.addColorStop(0.5, '#2a251a');
-    mirrorGrad.addColorStop(1, '#1a150e');
-    ctx.fillStyle = mirrorGrad;
-    ctx.fillRect(MIRROR_CX - FRAME_INNER_RX, MIRROR_CY - FRAME_INNER_RY, FRAME_INNER_RX * 2, FRAME_INNER_RY * 2);
-
-    // 镜面呼吸光晕
-    if (this.phase === 'idle') {
-      const breathAlpha = 0.05 + Math.sin(this.breathTime * (Math.PI * 2 / 3)) * 0.05 + 0.05;
-      const breathGrad = ctx.createRadialGradient(MIRROR_CX, MIRROR_CY, 30, MIRROR_CX, MIRROR_CY, FRAME_INNER_RY * 0.7);
-      breathGrad.addColorStop(0, `rgba(200, 170, 100, ${breathAlpha})`);
-      breathGrad.addColorStop(1, 'rgba(200, 170, 100, 0)');
-      ctx.fillStyle = breathGrad;
-      ctx.fillRect(MIRROR_CX - FRAME_INNER_RX, MIRROR_CY - FRAME_INNER_RY, FRAME_INNER_RX * 2, FRAME_INNER_RY * 2);
-
-      // 镜面微弱的反射高光
-      ctx.fillStyle = 'rgba(255, 240, 200, 0.03)';
-      ctx.beginPath();
-      ctx.ellipse(MIRROR_CX - 50, MIRROR_CY - 70, 80, 40, -0.3, 0, Math.PI * 2);
-      ctx.fill();
-    }
-
-    ctx.restore();
-
-    // === 裂纹（shattering 0.3s 后开始绘制） ===
-    if (this.phase === 'shattering' && this.cracksVisible) {
-      ctx.save();
-      // 裂纹随时间逐渐加深
-      const crackVisibility = Math.min(1, (this.phaseTime - 0.3) / 0.5);
-      ctx.strokeStyle = `rgba(80, 60, 40, ${0.4 * crackVisibility})`;
-      ctx.lineWidth = 2;
-      for (const segments of this.cracks) {
-        for (const seg of segments) {
-          ctx.beginPath();
-          ctx.moveTo(seg.x1, seg.y1);
-          ctx.lineTo(seg.x2, seg.y2);
-          ctx.stroke();
-        }
-      }
-      // 第二条细裂纹
-      ctx.strokeStyle = `rgba(200, 170, 130, ${0.2 * crackVisibility})`;
-      ctx.lineWidth = 1;
-      for (const segments of this.cracks) {
-        for (const seg of segments) {
-          const mx = (seg.x1 + seg.x2) / 2 + (Math.random() - 0.5) * 4;
-          const my = (seg.y1 + seg.y2) / 2 + (Math.random() - 0.5) * 4;
-          ctx.beginPath();
-          ctx.moveTo(seg.x1, seg.y1);
-          ctx.lineTo(mx, my);
-          ctx.lineTo(seg.x2, seg.y2);
-          ctx.stroke();
-        }
-      }
-      ctx.restore();
-    }
-
-    // === 碎片粒子 ===
-    ctx.save();
-    for (const p of this.shatterParticles) {
-      const alpha = Math.min(1, p.life * 1.5);
-      ctx.globalAlpha = alpha;
-      ctx.fillStyle = p.color;
-      ctx.translate(p.x, p.y);
-      ctx.rotate(p.rotation);
-
-      // 绘制小三角形碎片
-      const s = p.size;
-      ctx.beginPath();
-      ctx.moveTo(s, 0);
-      ctx.lineTo(-s * 0.5, -s * 0.6);
-      ctx.lineTo(-s * 0.4, s * 0.7);
-      ctx.closePath();
-      ctx.fill();
-
-      // 碎片边缘微光
-      ctx.strokeStyle = `rgba(255, 220, 160, ${alpha * 0.3})`;
-      ctx.lineWidth = 0.5;
-      ctx.stroke();
-
-      ctx.setTransform(1, 0, 0, 1, 0, 0);
-    }
-    ctx.restore();
-
-    // === 底部分阶段提示 ===
-    if (this.phase === 'idle') {
-      drawPrompt(ctx, '凝视镜中的自己……', width / 2, height - 50, 0);
-    } else if (this.phase === 'shattering') {
-      const holdAlpha = Math.min(1, this.phaseTime / 0.5);
-      ctx.save();
-      ctx.globalAlpha = 1 - holdAlpha;
-      drawPrompt(ctx, '凝视镜中的自己……', width / 2, height - 50, 0);
-      ctx.restore();
-    }
-  }
-}
-
-
 // ---- src/chapters/ch02_puzzle.js ----
 
 
+
+// 离屏 Canvas 预生成灰度版本（替代 ctx.filter）
+function createGrayscaleImage(image) {
+  const canvas = document.createElement('canvas');
+  canvas.width = image.width;
+  canvas.height = image.height;
+  const ctx = canvas.getContext('2d');
+  ctx.drawImage(image, 0, 0);
+  const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+  const data = imageData.data;
+  for (let i = 0; i < data.length; i += 4) {
+    const avg = data[i] * 0.299 + data[i + 1] * 0.587 + data[i + 2] * 0.114;
+    data[i] = data[i + 1] = data[i + 2] = avg;
+  }
+  ctx.putImageData(imageData, 0, 0);
+  return canvas;
+}
 
 class Chapter02 {
   constructor(game) {
@@ -1883,433 +1542,6 @@ class Chapter03 {
 }
 
 
-// ---- src/chapters/ch04_police.js ----
-
-
-class Chapter04 {
-  constructor(game) {
-    this.game = game;
-    this.phase = 'phone';          // phone → ringing → form → bracelet → complete
-    this.phaseTime = 0;
-    this.totalTime = 0;
-    this._completed = false;
-  }
-
-  get isComplete() { return this._completed; }
-  get completeTitle() { return '警局'; }
-  get completeMessage() { return '手环上刻着一个名字……也许这就是线索。'; }
-
-  onEnter() {
-    this.game.input.setHandlers({
-      down: point => this.handleDown(point),
-      move: () => {},
-      up: () => {},
-      cancel: () => {},
-    });
-  }
-
-  onExit() {
-    this.game.input.setHandlers();
-  }
-
-  // ============ 输入处理 ============
-
-  handleDown(point) {
-    if (this.phase === 'phone') {
-      // 电话热区：底座 + 听筒区域
-      const phoneBaseX = 200, phoneBaseY = 310, phoneBaseW = 100, phoneBaseH = 70;
-      const phoneEarpieceX = 190, phoneEarpieceY = 278, phoneEarpieceW = 120, phoneEarpieceH = 28;
-
-      const hitBase = point.x >= phoneBaseX && point.x <= phoneBaseX + phoneBaseW &&
-                      point.y >= phoneBaseY && point.y <= phoneBaseY + phoneBaseH;
-      const hitEarpiece = point.x >= phoneEarpieceX && point.x <= phoneEarpieceX + phoneEarpieceW &&
-                          point.y >= phoneEarpieceY && point.y <= phoneEarpieceY + phoneEarpieceH;
-
-      if (hitBase || hitEarpiece) {
-        this.phase = 'ringing';
-        this.phaseTime = 0;
-        try { navigator.vibrate?.(30); } catch {}
-      }
-    } else if (this.phase === 'form') {
-      // 手环热区 (x:120, y:560)
-      const bx = 120, by = 560;
-      const dist = Math.hypot(point.x - bx, point.y - by);
-      if (dist <= 40) {
-        this.phase = 'bracelet';
-        this.phaseTime = 0;
-        try { navigator.vibrate?.(15); } catch {}
-      }
-    }
-  }
-
-  // ============ update ============
-
-  update(dt) {
-    this.totalTime += dt;
-    this.phaseTime += dt;
-
-    if (this.phase === 'ringing') {
-      // 3次铃声脉冲后自动进入 form 阶段
-      // 每次脉冲 0.3s 间隔，共 3 次，再加一点缓冲
-      const pulseCount = Math.min(3, Math.floor(this.phaseTime / 0.3));
-      if (pulseCount >= 3 && this.phaseTime - 3 * 0.3 > 0.15) {
-        this.phase = 'form';
-        this.phaseTime = 0;
-      }
-    } else if (this.phase === 'bracelet') {
-      if (this.phaseTime >= 2 && !this._completed) {
-        this._completed = true;
-        this.game.progress.markChapterComplete(4, 30); // 标记第4章完成，记忆值30
-      }
-    }
-  }
-
-  // ============ render ============
-
-  render(ctx) {
-    const { width, height } = this.game;
-
-    this.drawBackground(ctx, width, height);
-    this.drawTable(ctx, width, height);
-
-    switch (this.phase) {
-      case 'phone':
-      case 'ringing':
-        this.drawPhone(ctx);
-        this.drawPhonePrompt(ctx);
-        break;
-      case 'form':
-        this.drawFormCard(ctx);
-        this.drawBracelet(ctx);
-        break;
-      case 'bracelet':
-        this.drawFormCard(ctx);
-        this.drawBraceletReveal(ctx, width, height);
-        break;
-    }
-  }
-
-  // ---------- 背景 ----------
-
-  drawBackground(ctx, width, height) {
-    // 深蓝灰渐变，警局冷色调
-    const grad = ctx.createLinearGradient(0, 0, 0, height);
-    grad.addColorStop(0, '#1a2025');
-    grad.addColorStop(1, '#252d35');
-    ctx.fillStyle = grad;
-    ctx.fillRect(0, 0, width, height);
-
-    // 灰色墙壁纹理——浅色墙缝线
-    ctx.strokeStyle = 'rgba(200, 200, 200, 0.05)';
-    ctx.lineWidth = 1;
-    for (let y = 80; y < height - 100; y += 60) {
-      ctx.beginPath();
-      ctx.moveTo(0, y);
-      ctx.lineTo(width, y);
-      ctx.stroke();
-    }
-    for (let x = 160; x < width; x += 160) {
-      ctx.beginPath();
-      ctx.moveTo(x, 0);
-      ctx.lineTo(x, height - 100);
-      ctx.stroke();
-    }
-  }
-
-  drawTable(ctx, width, height) {
-    // 底部木色桌子
-    const tableY = height - 80;
-    ctx.fillStyle = '#5c4030';
-    ctx.fillRect(0, tableY, width, 80);
-
-    // 木纹线条
-    ctx.strokeStyle = 'rgba(0,0,0,0.12)';
-    ctx.lineWidth = 1;
-    for (let y = tableY + 5; y < height - 5; y += 8) {
-      ctx.beginPath();
-      ctx.moveTo(0, y);
-      ctx.lineTo(width, y);
-      ctx.stroke();
-    }
-
-    // 桌面高光
-    ctx.fillStyle = 'rgba(255,255,255,0.04)';
-    ctx.fillRect(0, tableY, width, 3);
-  }
-
-  // ---------- 阶段1：电话 ----------
-
-  drawPhone(ctx) {
-    const baseX = 200, baseY = 310, baseW = 100, baseH = 70;
-    const earpieceX = 190, earpieceY = 278, earpieceW = 120, earpieceH = 28;
-
-    ctx.save();
-
-    // 脉冲光环（仅 idle 时呼吸）
-    if (this.phase === 'phone') {
-      const breath = 0.1 + 0.3 * (0.5 + 0.5 * Math.sin(this.totalTime * 2 * Math.PI / 1.5));
-      const cx = baseX + baseW / 2;
-      const cy = baseY + baseH / 2;
-      for (let i = 0; i < 3; i++) {
-        const radius = Math.max(baseW, baseH) / 2 + 20 + i * 20;
-        ctx.strokeStyle = `rgba(180, 150, 120, ${breath * (1 - i * 0.25)})`;
-        ctx.lineWidth = 1.5;
-        ctx.beginPath();
-        ctx.arc(cx, cy, radius, 0, Math.PI * 2);
-        ctx.stroke();
-      }
-    }
-
-    // 铃声脉冲
-    if (this.phase === 'ringing') {
-      const pulseIndex = Math.min(2, Math.floor(this.phaseTime / 0.3));
-      const pulseElapsed = this.phaseTime - pulseIndex * 0.3;
-      const isPulsing = pulseIndex < 3 && pulseElapsed < 0.2;
-      const scale = isPulsing ? 1 + 0.15 * Math.sin(pulseElapsed / 0.2 * Math.PI) : 1;
-
-      ctx.translate(baseX + baseW / 2, baseY + baseH / 2);
-      ctx.scale(scale, scale);
-      ctx.translate(-baseX - baseW / 2, -baseY - baseH / 2);
-    }
-
-    // ---- 底座 ----
-    ctx.shadowColor = 'rgba(0,0,0,0.3)';
-    ctx.shadowBlur = 12;
-    ctx.shadowOffsetY = 4;
-
-    roundedRect(ctx, baseX, baseY, baseW, baseH, 8);
-    ctx.fillStyle = '#5a3020';
-    ctx.fill();
-
-    ctx.shadowBlur = 0;
-    ctx.shadowOffsetY = 0;
-
-    // 底座细节——转盘
-    ctx.fillStyle = '#4a2518';
-    roundedRect(ctx, baseX + 15, baseY + 12, baseW - 30, 8, 3);
-    ctx.fill();
-
-    // 转盘数字点
-    for (let i = 0; i < 10; i++) {
-      const angle = (i / 10) * Math.PI * 2 - Math.PI / 2;
-      const rx = baseX + baseW / 2 + 26 * Math.cos(angle);
-      const ry = baseY + 35 + 18 * Math.sin(angle);
-      ctx.fillStyle = '#8a6040';
-      ctx.beginPath();
-      ctx.arc(rx, ry, 2.5, 0, Math.PI * 2);
-      ctx.fill();
-    }
-
-    // ---- 听筒（横躺长条，在底座上方） ----
-    ctx.shadowColor = 'rgba(0,0,0,0.25)';
-    ctx.shadowBlur = 10;
-    ctx.shadowOffsetY = 3;
-
-    roundedRect(ctx, earpieceX, earpieceY, earpieceW, earpieceH, 14);
-    ctx.fillStyle = '#5a3020';
-    ctx.fill();
-
-    // 听筒线缆
-    ctx.shadowBlur = 0;
-    ctx.strokeStyle = '#3a1a10';
-    ctx.lineWidth = 2.5;
-    ctx.beginPath();
-    ctx.moveTo(earpieceX + earpieceW / 2, earpieceY + earpieceH);
-    ctx.quadraticCurveTo(
-      earpieceX + earpieceW / 2 + 20, earpieceY + earpieceH + 30,
-      earpieceX + earpieceW / 2 - 10, earpieceY + earpieceH + 50
-    );
-    ctx.stroke();
-
-    ctx.restore();
-  }
-
-  drawPhonePrompt(ctx) {
-    ctx.save();
-    const text = '有人打电话来了……';
-    const tx = 30, ty = 30;
-    const tw = ctx.measureText(text).width;
-    const pad = 16;
-
-    // 气泡背景
-    roundedRect(ctx, tx - pad, ty - pad, tw + pad * 2, 36, 18);
-    ctx.fillStyle = 'rgba(0,0,0,0.4)';
-    ctx.fill();
-
-    ctx.fillStyle = '#d4c8b8';
-    ctx.font = '500 20px system-ui, "PingFang SC", sans-serif';
-    ctx.textAlign = 'left';
-    ctx.textBaseline = 'top';
-    ctx.fillText(text, tx, ty + 2);
-    ctx.restore();
-  }
-
-  // ---------- 阶段2：登记单 + 手环 ----------
-
-  drawFormCard(ctx) {
-    const cardX = 700, cardY = 180, cardW = 380, cardH = 280;
-
-    ctx.save();
-
-    // 阴影
-    ctx.shadowColor = 'rgba(0,0,0,0.35)';
-    ctx.shadowBlur = 20;
-    ctx.shadowOffsetX = 4;
-    ctx.shadowOffsetY = 4;
-
-    roundedRect(ctx, cardX, cardY, cardW, cardH, 8);
-    ctx.fillStyle = '#f5f0e8';
-    ctx.fill();
-
-    ctx.shadowBlur = 0;
-    ctx.shadowOffsetX = 0;
-    ctx.shadowOffsetY = 0;
-
-    // 边框
-    ctx.strokeStyle = 'rgba(0,0,0,0.1)';
-    ctx.lineWidth = 1;
-    roundedRect(ctx, cardX, cardY, cardW, cardH, 8);
-    ctx.stroke();
-
-    // 标题占位横线
-    ctx.fillStyle = 'rgba(0,0,0,0.1)';
-    ctx.fillRect(cardX + 20, cardY + 20, 80, 3);
-
-    // 手写风格文字行（短横线模拟，每行长度不同）
-    const lineStartY = cardY + 45;
-    const lineGap = 24;
-    const lineConfigs = [
-      { offset: 30, width: 180 },
-      { offset: 45, width: 140 },
-      { offset: 35, width: 50 },
-      { offset: 30, width: 120 },
-      { offset: 35, width: 200 },
-      { offset: 55, width: 90 },
-    ];
-
-    for (let i = 0; i < lineConfigs.length; i++) {
-      const { offset, width } = lineConfigs[i];
-      const lx = cardX + offset;
-      const ly = lineStartY + i * lineGap;
-      const segments = Math.max(3, Math.floor(width / 12));
-
-      ctx.strokeStyle = `rgba(60, 40, 30, ${0.18 + (i % 2) * 0.08})`;
-      ctx.lineWidth = 1.5;
-      ctx.beginPath();
-      ctx.moveTo(lx, ly);
-      for (let s = 1; s <= segments; s++) {
-        const px = lx + (width / segments) * s;
-        const py = ly + ((s % 2 === 0) ? -1 : 1) * Math.random() * 1.2;
-        ctx.lineTo(px, py);
-      }
-      ctx.stroke();
-    }
-
-    // 红印标记标题
-    ctx.fillStyle = '#c0392b';
-    ctx.font = 'bold 17px system-ui, "PingFang SC", sans-serif';
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.fillText('【重点】', cardX + cardW / 2, cardY + cardH - 75);
-
-    // 关键线索（红色大字）
-    ctx.fillStyle = '#c0392b';
-    ctx.font = 'bold 26px system-ui, "PingFang SC", sans-serif';
-    ctx.fillText('XX小区 5栋 503', cardX + cardW / 2, cardY + cardH - 40);
-
-    ctx.restore();
-  }
-
-  drawBracelet(ctx) {
-    const bx = 120, by = 560;
-    const pulse = 0.4 + 0.3 * Math.sin(this.totalTime * 2.5);
-
-    ctx.save();
-
-    // 外圈脉冲光圈
-    ctx.strokeStyle = `rgba(212, 168, 64, ${pulse * 0.5})`;
-    ctx.lineWidth = 2;
-    ctx.beginPath();
-    ctx.arc(bx, by, 28 + pulse * 8, 0, Math.PI * 2);
-    ctx.stroke();
-
-    // 第二圈
-    ctx.strokeStyle = `rgba(212, 168, 64, ${pulse * 0.25})`;
-    ctx.lineWidth = 1.5;
-    ctx.beginPath();
-    ctx.arc(bx, by, 38 + pulse * 6, 0, Math.PI * 2);
-    ctx.stroke();
-
-    // 光点渐变
-    const glow = ctx.createRadialGradient(bx, by, 0, bx, by, 22);
-    glow.addColorStop(0, `rgba(255, 220, 120, ${0.6 + pulse * 0.3})`);
-    glow.addColorStop(0.5, `rgba(212, 168, 64, ${0.3 + pulse * 0.2})`);
-    glow.addColorStop(1, 'rgba(212, 168, 64, 0)');
-    ctx.fillStyle = glow;
-    ctx.beginPath();
-    ctx.arc(bx, by, 22, 0, Math.PI * 2);
-    ctx.fill();
-
-    drawPrompt(ctx, '桌上还有一个手环……', bx, by + 55, 0);
-
-    ctx.restore();
-  }
-
-  // ---------- 阶段3：手环揭示 ----------
-
-  drawBraceletReveal(ctx, width, height) {
-    const cx = width / 2, cy = height / 2;
-    const t = this.phaseTime;
-    const revealProgress = Math.min(1, t / 1);
-
-    ctx.save();
-
-    // 变亮变大的光环
-    const glowRadius = 40 + (1 - revealProgress) * 60;
-    const glow = ctx.createRadialGradient(cx, cy, 0, cx, cy, glowRadius);
-    glow.addColorStop(0, `rgba(212, 168, 64, ${0.4 + revealProgress * 0.3})`);
-    glow.addColorStop(0.4, `rgba(212, 168, 64, ${0.25})`);
-    glow.addColorStop(1, 'rgba(212, 168, 64, 0)');
-    ctx.fillStyle = glow;
-    ctx.beginPath();
-    ctx.arc(cx, cy, glowRadius, 0, Math.PI * 2);
-    ctx.fill();
-
-    // 外圈光环
-    ctx.strokeStyle = `rgba(212, 168, 64, ${0.2 + 0.15 * Math.sin(this.totalTime * 2)})`;
-    ctx.lineWidth = 2;
-    ctx.beginPath();
-    ctx.arc(cx, cy, glowRadius * 0.7, 0, Math.PI * 2);
-    ctx.stroke();
-
-    // 中心光点
-    ctx.fillStyle = `rgba(255, 220, 120, ${0.7 + 0.3 * Math.sin(this.totalTime * 2.5)})`;
-    ctx.beginPath();
-    ctx.arc(cx, cy, 20, 0, Math.PI * 2);
-    ctx.fill();
-
-    // 文字（t > 0.8s 后淡入）
-    if (t > 0.8) {
-      const textAlpha = Math.min(1, (t - 0.8) / 0.6);
-      ctx.globalAlpha = textAlpha;
-
-      ctx.fillStyle = '#d4c8b8';
-      ctx.font = '500 28px system-ui, "PingFang SC", sans-serif';
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'bottom';
-      ctx.fillText('上面刻着一个名字……', cx, cy - 55);
-
-      ctx.font = '400 16px system-ui, "PingFang SC", sans-serif';
-      ctx.fillStyle = 'rgba(180, 170, 155, 0.6)';
-      ctx.textBaseline = 'top';
-      ctx.fillText('线索正在浮出水面……', cx, cy + 55);
-    }
-
-    ctx.restore();
-  }
-}
-
-
 // ---- src/chapters/ch05_door.js ----
 
 
@@ -2334,7 +1566,6 @@ class Chapter05 {
     this.sourcesFound = 0;
     this.isLocking = false;
     this.lockTargetIdx = -1;
-    this._activePointerId = null; // 多指防干扰
     this.sources = SOUND_SOURCES.map(s => ({ ...s, found: false, lockProgress: 0, wavePhase: s.wavePhase }));
 
     // Gating 2
@@ -2372,15 +1603,12 @@ class Chapter05 {
 
   handleDown(point) {
     try {
-      // 多指防干扰：已有激活手指时忽略其它手指
-      if (this._activePointerId != null && point.pointerId !== this._activePointerId) return;
       if (this.phase === 'narrative') {
         if (this.phaseTime > 1.5) {
           this.phase = 'gating1';
           this.phaseTime = 0;
         }
       } else if (this.phase === 'gating1') {
-        this._activePointerId = point.pointerId;
         this.dragging = true;
         this.dragStartX = point.x;
         this.scanStartX = this.scanPos;
@@ -2433,14 +1661,9 @@ class Chapter05 {
         }
       }
     }
-    if (this.phase === 'gating2') {
-      this.hoveredBtn = this._getHoveredButton(point);
-    }
   }
 
-  handleUp(point) {
-    if (point.pointerId !== this._activePointerId) return;
-    this._activePointerId = null;
+  handleUp(_point) {
     if (this.phase === 'gating1') {
       this.dragging = false;
       if (this.isLocking && this.lockTargetIdx >= 0) {
@@ -2453,7 +1676,6 @@ class Chapter05 {
   }
 
   handleCancel() {
-    this._activePointerId = null;
     this.dragging = false;
     if (this.isLocking && this.lockTargetIdx >= 0) {
       this.sources[this.lockTargetIdx].lockProgress = 0;
@@ -2472,16 +1694,6 @@ class Chapter05 {
       if (dist < minDist) { minDist = dist; idx = i; }
     }
     return idx;
-  }
-
-  _getHoveredButton(point) {
-    for (let i = 0; i < ELEVATOR_BUTTONS.length; i++) {
-      const r = getButtonRect(i);
-      if (point.x >= r.x && point.x <= r.x + r.w && point.y >= r.y && point.y <= r.y + r.h) {
-        return i;
-      }
-    }
-    return -1;
   }
 
   handleButtonPress(idx) {
@@ -2543,6 +1755,7 @@ class Chapter05 {
         break;
 
       case 'gating2':
+        this.hoveredBtn = -1;
         if (this.errorTimer > 0) this.errorTimer = Math.max(0, this.errorTimer - dt);
         break;
 
@@ -2557,7 +1770,17 @@ class Chapter05 {
         break;
 
       case 'complete':
-        // 由 ChapterManager 检测 isComplete 统一弹 Overlay
+        if (this.phaseTime >= 2.5) {
+          this.game.progress.save('ch05_complete', true);
+          this.game.overlay.show({
+            type: 'complete',
+            title: '记忆中……有什么被唤醒了。',
+            message: '记忆解锁 35%',
+            buttons: [
+              { text: '继续下一章节', action: () => this.game.chapterManager.next() }
+            ],
+          });
+        }
         break;
     }
   }
@@ -3195,7 +2418,6 @@ class Chapter06 {
     // Gating 1 — 触觉感知
     this.comfortProgress = 0;
     this.fingerInBowl = false;
-    this._activePointerId = null; // 多指防干扰
 
     // 蒸汽粒子
     this.steam = this._initSteam();
@@ -3274,12 +2496,9 @@ class Chapter06 {
 
   handleDown(point) {
     try {
-      // 多指防干扰：已有激活手指时忽略其它手指
-      if (this._activePointerId != null && point.pointerId !== this._activePointerId) return;
       if (this.phase === 'narrative') {
         if (this.phaseTime > 1.5) { this.phase = 'gating1'; this.phaseTime = 0; }
       } else if (this.phase === 'gating1') {
-        this._activePointerId = point.pointerId;
         if (hitBowl(point.x, point.y)) {
           this.fingerInBowl = true;
         }
@@ -3305,16 +2524,13 @@ class Chapter06 {
     } catch (e) { console.error('Ch06 handleMove:', e); }
   }
 
-  handleUp(point) {
-    if (point.pointerId !== this._activePointerId) return;
-    this._activePointerId = null;
+  handleUp(_point) {
     if (this.phase === 'gating1') {
       this.fingerInBowl = false;
     }
   }
 
   handleCancel() {
-    this._activePointerId = null;
     this.fingerInBowl = false;
   }
 
@@ -3354,7 +2570,17 @@ class Chapter06 {
         break;
 
       case 'complete':
-        // 由 ChapterManager 检测 isComplete 统一弹 Overlay
+        if (this.phaseTime >= 1) {
+          this.game.progress.save('ch06_complete', true);
+          this.game.overlay.show({
+            type: 'complete',
+            title: '一碗热面，唤醒沉睡的味觉',
+            message: '记忆解锁 45%',
+            buttons: [
+              { text: '继续下一章节', action: () => this.game.chapterManager.next() },
+            ],
+          });
+        }
         break;
     }
   }
@@ -4053,490 +3279,6 @@ class Chapter06 {
 }
 
 
-// ---- src/chapters/ch07_night.js ----
-// Ch7 惊悚夜醒——在黑暗中摸到门锁
-
-
-
-function vibe(ms) {
-  try { navigator.vibrate(ms); } catch (e) { /* 不支持振动 */ }
-}
-
-class Chapter07 {
-  constructor(game) {
-    this.game = game;
-    this.phase = 'narrative';
-    this.phaseTime = 0;
-    this._complete = false;
-    this.time = 0;
-
-    // 门锁位置
-    this.lockX = 640;
-    this.lockY = 500;
-
-    // 手指跟踪
-    this.fingerX = -1;
-    this.fingerY = -1;
-    this.fingerActive = false;
-
-    // 静态噪点（极暗的灰点）
-    this.noiseDots = [];
-    for (let i = 0; i < 80; i++) {
-      this.noiseDots.push({
-        x: Math.random() * 1280,
-        y: Math.random() * 720,
-        opacity: 0.01 + Math.random() * 0.03,
-      });
-    }
-
-    // 超时兜底
-    this.warmLightProgress = 0; // 0~1，50s 开始增长，60s 达到 1
-    this.timeoutRevealed = false;
-    this.moonHintShown = false;
-
-    // 叙事文本
-    this.narrativeLines = [
-      '深夜，不知是几点。',
-      '黑暗中，只有自己的呼吸声。',
-      '什么都看不见……只能用手去摸索。',
-      '需要找到那个熟悉的东西……',
-    ];
-
-    // 完成动画参数
-    this.openProgress = 0;
-    this.completeTransition = false;
-  }
-
-  get isComplete() { return this._complete; }
-  get completeTitle() { return '找到门锁'; }
-  get completeMessage() { return '终于找到了门……'; }
-
-  // ============ 生命周期 ============
-
-  onEnter() {
-    this.game.input.setHandlers({
-      down: point => this.handleDown(point),
-      move: point => this.handleMove(point),
-      up: () => this.handleUp(),
-      cancel: () => this.handleCancel(),
-    });
-  }
-
-  onExit() {
-    this.game.input.setHandlers();
-  }
-
-  // ============ 输入处理 ============
-
-  handleDown(point) {
-    try {
-      if (this.phase === 'narrative') {
-        if (this.phaseTime > 1.0) {
-          this.phase = 'searching';
-          this.phaseTime = 0;
-          this.fingerX = point.x;
-          this.fingerY = point.y;
-          this.fingerActive = true;
-        }
-        return;
-      }
-
-      if (this.phase === 'searching') {
-        this.fingerX = point.x;
-        this.fingerY = point.y;
-        this.fingerActive = true;
-
-        // 超时后任意点击即开门
-        if (this.timeoutRevealed) {
-          this._openDoor();
-          return;
-        }
-
-        // 手指非常接近门锁时点击 → 开门
-        const dist = Math.hypot(point.x - this.lockX, point.y - this.lockY);
-        if (dist < 35) {
-          this._openDoor();
-          vibe(50);
-        }
-        return;
-      }
-    } catch (e) { console.error('Ch07 handleDown:', e); }
-  }
-
-  handleMove(point) {
-    if (this.phase === 'searching') {
-      this.fingerX = point.x;
-      this.fingerY = point.y;
-    }
-  }
-
-  handleUp() {
-    this.fingerActive = false;
-  }
-
-  handleCancel() {
-    this.fingerActive = false;
-  }
-
-  _openDoor() {
-    this.phase = 'found';
-    this.phaseTime = 0;
-    vibe(100);
-  }
-
-  // ============ 辅助方法 ============
-
-  /** 手指到门锁的距离 */
-  _getFingerDist() {
-    if (this.fingerX < 0 || this.fingerY < 0) return Infinity;
-    return Math.hypot(this.fingerX - this.lockX, this.fingerY - this.lockY);
-  }
-
-  /** 门锁呼吸透明度（0.04~0.08），周期 3.5s */
-  _getBreathOpacity() {
-    const breath = Math.sin(this.time * Math.PI * 2 / 3.5);
-    return 0.04 + (breath * 0.5 + 0.5) * 0.04;
-  }
-
-  // ============ update ============
-
-  update(dt) {
-    this.time += dt;
-    this.phaseTime += dt;
-
-    switch (this.phase) {
-      case 'narrative':
-        if (this.phaseTime >= 5) {
-          this.phase = 'searching';
-          this.phaseTime = 0;
-        }
-        break;
-
-      case 'searching':
-        // 60s 超时兜底机制
-        if (this.phaseTime > 50) {
-          this.warmLightProgress = Math.min(1, (this.phaseTime - 50) / 10);
-          if (this.phaseTime > 58 && !this.moonHintShown) {
-            this.moonHintShown = true;
-          }
-          if (this.phaseTime > 60 && !this.timeoutRevealed) {
-            this.timeoutRevealed = true;
-            vibe(30);
-          }
-        }
-        break;
-
-      case 'found':
-        this.openProgress = Math.min(1, this.phaseTime / 1.0);
-        if (this.phaseTime >= 1.0 && !this._complete) {
-          this._complete = true;
-          this.phase = 'complete';
-          this.phaseTime = 0;
-        }
-        break;
-
-      case 'complete':
-        // 由 ChapterManager 检测 isComplete 统一弹 Overlay
-        break;
-    }
-  }
-
-  // ============ render ============
-
-  render(ctx) {
-    try {
-      this._renderSafe(ctx);
-    } catch (e) {
-      console.error('Ch07 render error:', e);
-      ctx.fillStyle = '#0a0806';
-      ctx.fillRect(0, 0, this.game.width, this.game.height);
-      ctx.fillStyle = '#d4b896';
-      ctx.font = '20px system-ui, "PingFang SC", sans-serif';
-      ctx.textAlign = 'center';
-      ctx.fillText('画面加载异常，请重试', this.game.width / 2, this.game.height / 2);
-    }
-  }
-
-  _renderSafe(ctx) {
-    const { width, height } = this.game;
-
-    switch (this.phase) {
-      case 'narrative':
-        this.renderNarrative(ctx);
-        break;
-      case 'searching':
-        this.renderSearching(ctx);
-        break;
-      case 'found':
-        this.renderFound(ctx);
-        break;
-      case 'complete':
-        /* overlay 处理 */
-        break;
-      default:
-        ctx.fillStyle = '#0a0806';
-        ctx.fillRect(0, 0, width, height);
-    }
-  }
-
-  // ---------- 叙事开场 ----------
-
-  renderNarrative(ctx) {
-    const { width, height } = this.game;
-    ctx.fillStyle = '#0a0806';
-    ctx.fillRect(0, 0, width, height);
-
-    const alpha = Math.min(1, this.phaseTime / 1.5);
-    const textIdx = Math.min(Math.floor(this.phaseTime / 1.0), this.narrativeLines.length - 1);
-
-    ctx.save();
-    ctx.globalAlpha = alpha;
-    ctx.fillStyle = '#d4b896';
-    ctx.font = '500 26px system-ui, "PingFang SC", sans-serif';
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-
-    const chars = Math.floor((this.phaseTime - textIdx * 1.0) / 0.035);
-    ctx.fillText(this.narrativeLines[textIdx].slice(0, Math.min(chars, this.narrativeLines[textIdx].length)), width / 2, height / 2 - 20);
-
-    if (this.phaseTime > 2.8) {
-      ctx.globalAlpha = Math.min(1, (this.phaseTime - 2.8) / 0.8);
-      ctx.fillStyle = '#8a7a6a';
-      ctx.font = '16px system-ui, "PingFang SC", sans-serif';
-      ctx.fillText('点击或触摸继续……', width / 2, height - 60);
-    }
-    ctx.restore();
-  }
-
-  // ---------- 搜索阶段 ----------
-
-  renderSearching(ctx) {
-    const { width, height } = this.game;
-
-    // 1. 纯黑背景
-    ctx.fillStyle = '#0a0806';
-    ctx.fillRect(0, 0, width, height);
-
-    // 2. 噪点
-    this._drawNoise(ctx);
-
-    // 3. 门锁（根据手指距离与超时状态决定透明度和光晕）
-    this._drawLock(ctx);
-
-    // 4. 手指光圈（微弱暖光照亮手指周围）
-    if (this.fingerActive) {
-      this._drawFingerLight(ctx);
-    }
-
-    // 5. 超时暖光（月光）
-    if (this.warmLightProgress > 0) {
-      this._drawWarmLight(ctx);
-    }
-
-    // 6. UI 提示
-    this._drawSearchUI(ctx);
-  }
-
-  _drawNoise(ctx) {
-    ctx.save();
-    for (const dot of this.noiseDots) {
-      ctx.fillStyle = `rgba(160, 150, 140, ${dot.opacity})`;
-      ctx.fillRect(dot.x, dot.y, 1.5, 1.5);
-    }
-    ctx.restore();
-  }
-
-  _drawLock(ctx) {
-    ctx.save();
-
-    // 根据不同状态计算门锁透明度与光晕参数
-    let lockOpacity;
-    let drawGlow = false;
-    let glowRadius = 50;
-    const dist = this._getFingerDist();
-    const isNear = this.fingerActive && dist < 100;
-    const isClose = this.fingerActive && dist < 35;
-
-    if (this.timeoutRevealed) {
-      // 超时自动高亮：大脉冲
-      const pulse = 0.5 + 0.5 * Math.sin(this.time * 4);
-      lockOpacity = 0.7 + pulse * 0.15;
-      glowRadius = 70 + pulse * 30;
-      drawGlow = true;
-    } else if (isClose) {
-      lockOpacity = 0.8;
-      drawGlow = true;
-      glowRadius = 35;
-    } else if (isNear) {
-      lockOpacity = 0.3;
-      drawGlow = true;
-      glowRadius = 50;
-    } else {
-      lockOpacity = this._getBreathOpacity();
-    }
-
-    // 光晕
-    if (drawGlow) {
-      const glow = ctx.createRadialGradient(this.lockX, this.lockY, 0, this.lockX, this.lockY, glowRadius);
-      glow.addColorStop(0, `rgba(196, 160, 96, ${lockOpacity * 0.6})`);
-      glow.addColorStop(0.5, `rgba(196, 160, 96, ${lockOpacity * 0.2})`);
-      glow.addColorStop(1, 'rgba(196, 160, 96, 0)');
-      ctx.fillStyle = glow;
-      ctx.beginPath();
-      ctx.arc(this.lockX, this.lockY, glowRadius, 0, Math.PI * 2);
-      ctx.fill();
-    }
-
-    // 门锁本身（小圆形）
-    ctx.fillStyle = `rgba(196, 160, 96, ${lockOpacity})`;
-    ctx.beginPath();
-    ctx.arc(this.lockX, this.lockY, 18, 0, Math.PI * 2);
-    ctx.fill();
-
-    // 门锁轮廓（仅在高亮时可见）
-    if (lockOpacity > 0.2) {
-      ctx.strokeStyle = `rgba(196, 160, 96, ${lockOpacity * 0.3})`;
-      ctx.lineWidth = 1.5;
-      ctx.beginPath();
-      ctx.arc(this.lockX, this.lockY, 18, 0, Math.PI * 2);
-      ctx.stroke();
-    }
-
-    // 门锁十字标记（钥匙孔示意）
-    if (lockOpacity > 0.3) {
-      ctx.strokeStyle = `rgba(120, 100, 60, ${lockOpacity * 0.4})`;
-      ctx.lineWidth = 1.5;
-      ctx.beginPath();
-      ctx.moveTo(this.lockX - 5, this.lockY);
-      ctx.lineTo(this.lockX + 5, this.lockY);
-      ctx.moveTo(this.lockX, this.lockY - 5);
-      ctx.lineTo(this.lockX, this.lockY + 5);
-      ctx.stroke();
-    }
-
-    ctx.restore();
-  }
-
-  /** 手指光圈的微弱暖光效果 */
-  _drawFingerLight(ctx) {
-    ctx.save();
-    const grad = ctx.createRadialGradient(this.fingerX, this.fingerY, 20, this.fingerX, this.fingerY, 140);
-    grad.addColorStop(0, 'rgba(200, 180, 140, 0.08)');
-    grad.addColorStop(0.4, 'rgba(200, 180, 140, 0.03)');
-    grad.addColorStop(1, 'rgba(0, 0, 0, 0)');
-    ctx.fillStyle = grad;
-    ctx.fillRect(0, 0, this.game.width, this.game.height);
-    ctx.restore();
-  }
-
-  /** 超时 50~60s 的月光效果 */
-  _drawWarmLight(ctx) {
-    ctx.save();
-
-    const progress = this.warmLightProgress;
-    const radius = 200 + progress * 1000;  // 200 → 1200
-    const centerX = 100;
-    const centerY = 100;
-
-    const grad = ctx.createRadialGradient(centerX, centerY, 0, centerX, centerY, radius);
-    grad.addColorStop(0, `rgba(255, 230, 160, ${progress * 0.15})`);
-    grad.addColorStop(0.3, `rgba(255, 220, 150, ${progress * 0.08})`);
-    grad.addColorStop(0.6, `rgba(220, 200, 140, ${progress * 0.04})`);
-    grad.addColorStop(1, 'rgba(0, 0, 0, 0)');
-
-    ctx.fillStyle = grad;
-    ctx.fillRect(0, 0, this.game.width, this.game.height);
-    ctx.restore();
-  }
-
-  _drawSearchUI(ctx) {
-    const { width, height } = this.game;
-
-    ctx.save();
-    const dist = this._getFingerDist();
-    const isNear = this.fingerActive && dist < 100;
-    const isClose = this.fingerActive && dist < 35;
-
-    // 靠近门锁时的提示
-    if (isClose) {
-      drawPrompt(ctx, '咔嗒……', this.lockX, this.lockY - 45, 0.3);
-    } else if (isNear) {
-      drawPrompt(ctx, '似乎摸到了什么……', width / 2, height - 30, 0);
-    } else if (!this.fingerActive) {
-      drawPrompt(ctx, '伸出手，在黑暗中摸索', width / 2, height - 30, 0);
-    }
-
-    // 月光提示
-    if (this.moonHintShown) {
-      ctx.fillStyle = 'rgba(255, 230, 180, 0.5)';
-      ctx.font = '18px system-ui, "PingFang SC", sans-serif';
-      ctx.textAlign = 'right';
-      ctx.textBaseline = 'bottom';
-      ctx.fillText('月光照了进来……', width - 30, height - 30);
-    }
-
-    // 超时提示
-    if (this.timeoutRevealed) {
-      ctx.fillStyle = 'rgba(255, 230, 180, 0.7)';
-      ctx.font = 'bold 20px system-ui, "PingFang SC", sans-serif';
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'middle';
-      ctx.fillText('门就在那里……点击任意位置打开', width / 2, height / 2 + 100);
-    }
-
-    ctx.restore();
-  }
-
-  // ---------- 开门动画 ----------
-
-  renderFound(ctx) {
-    const { width, height } = this.game;
-
-    // 暖光从门锁扩散
-    const progress = this.openProgress;
-    const radius = 18 + progress * 800;
-
-    ctx.fillStyle = '#0a0806';
-    ctx.fillRect(0, 0, width, height);
-
-    // 从门锁位置扩散暖光
-    ctx.save();
-    const grad = ctx.createRadialGradient(this.lockX, this.lockY, 0, this.lockX, this.lockY, radius);
-    grad.addColorStop(0, `rgba(255, 230, 160, ${progress * 0.5})`);
-    grad.addColorStop(0.3, `rgba(255, 210, 130, ${progress * 0.3})`);
-    grad.addColorStop(0.6, `rgba(220, 180, 100, ${progress * 0.15})`);
-    grad.addColorStop(1, 'rgba(0, 0, 0, 0)');
-    ctx.fillStyle = grad;
-    ctx.fillRect(0, 0, width, height);
-    ctx.restore();
-
-    // 门锁淡出
-    ctx.save();
-    const lockFade = Math.max(0, 1 - progress * 2);
-    if (lockFade > 0) {
-      ctx.fillStyle = `rgba(196, 160, 96, ${lockFade})`;
-      ctx.beginPath();
-      ctx.arc(this.lockX, this.lockY, 18, 0, Math.PI * 2);
-      ctx.fill();
-    }
-    ctx.restore();
-
-    // 开门文字（淡入）
-    if (progress > 0.3) {
-      ctx.save();
-      const textAlpha = Math.min(1, (progress - 0.3) / 0.3);
-      ctx.globalAlpha = textAlpha;
-      ctx.fillStyle = '#d4b896';
-      ctx.font = 'bold 28px system-ui, "PingFang SC", sans-serif';
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'middle';
-      ctx.fillText('门开了……', width / 2, height / 2);
-      ctx.restore();
-    }
-  }
-}
-
-
 // ---- src/chapters/ch08_sign.js ----
 // Ch8 签字——从独立 app 重写为 Chapter 接口
 
@@ -4634,6 +3376,8 @@ class Chapter08 {
     this.PASS_SCORE = 80;
     this.TIMEOUT_SEC = 10;
     this._completed = false;
+
+    // 缩放参数
     const imgW = 1448, imgH = 1086;
     const sc = Math.max(this.DW / imgW, this.DH / imgH);
     const cropIx = 910, cropIy = 772, cropIw = 510, cropIh = 118;
@@ -4673,22 +3417,14 @@ class Chapter08 {
   }
 
   handleDown(point) {
-    // 弹层优先消除
-    if (this.timeoutFired || this.showHint) {
-      this.checkButtonClick(point);
-      return;
-    }
-    // 按钮区域优先（底部 72px 高度区域）
-    if (point.y >= this.DH - 72) {
-      this.checkButtonClick(point);
-      return;
-    }
     if (this.phase === 'writing' && !this.passed) {
-      if (this.wPid != null) return; // 已有激活手指，忽略其它
       this.wDown = true;
       this.wPid = point.pointerId;
       this.cur = [point];
+      return;
     }
+    // 检查弹层按钮（超时/提示/通过）
+    this.checkButtonClick(point);
   }
 
   handleMove(point) {
@@ -4701,7 +3437,6 @@ class Chapter08 {
 
   handleUp(point) {
     if (this.phase !== 'writing' || !this.wDown) return;
-    if (point.pointerId !== this.wPid) return; // 忽略非激活手指
     this.wDown = false;
     this.wPid = null;
     if (this.cur.length >= 4) {
@@ -4736,6 +3471,7 @@ class Chapter08 {
     if (this.timeoutFired) {
       this.timeoutFired = false;
       this.elapsed = 0;
+      this.totalDT = 0;
       try { navigator.vibrate?.(10); } catch {}
       return;
     }
@@ -4744,10 +3480,14 @@ class Chapter08 {
       try { navigator.vibrate?.(10); } catch {}
       return;
     }
+    if (this._completed) {
+      this.resetAll();
+      return;
+    }
   }
 
   submit() {
-    if (this.passed || this.strokes.length < 6) return;
+    if (this.passed || this.strokes.length < 5) return;
     if (this.matchSignature()) {
       this.passed = true;
       this._completed = true;
@@ -4816,6 +3556,8 @@ class Chapter08 {
   }
 
   update(dt) {
+    this.totalDT += dt;
+
     // phase transitions
     if (this.phase === 'sign') {
       this.phaseTime += dt;
@@ -4836,8 +3578,13 @@ class Chapter08 {
         this.timeoutFired = false;
       }
     } else if (this.phase === 'writing' && this.timeoutActive && !this.passed) {
+      this.totalDT += dt;
+      // 用 totalDT 的方式计时（简化：每10次 update 约1秒）
+      // 改用 dt 累加
       const prevElapsed = this.elapsed;
       this.elapsed += dt;
+      const newSec = Math.floor(this.elapsed);
+      const prevSec = Math.floor(prevElapsed);
       if (this.elapsed >= this.TIMEOUT_SEC && !this.timeoutFired) {
         this.timeoutFired = true;
       }
@@ -4860,10 +3607,10 @@ class Chapter08 {
       this.drawButton(ctx, this.DW - 110 - 20, this.DH - 40 - 16, 110, 40, '提 交', '#f5e6c8', '#4d3420');
     }
 
-    // 自有弹层（超时/提示）保留 Canvas 绘制，完成弹层走统一 Overlay 系统
+    // 弹层
     if (this.timeoutFired) this.renderOverlay(ctx, '时间过了许久', '连笔写——手记得的，疾病夺不走', '再试试');
     if (this.showHint) this.renderOverlay(ctx, '笔迹畸变规则', '横↔竖、撇↔捺，试试连笔写', '明白了');
-    // _completed 时由 ChapterManager.update() 检测 isComplete 自动弹统一 Overlay
+    if (this._completed) this.renderOverlay(ctx, '辨认成功', '——\n李向阳', '再写一次', true);
   }
 
   renderSign(ctx) {
@@ -5021,721 +3768,8 @@ class Chapter08 {
 }
 
 
-// ---- src/chapters/ch09_chime.js ----
-
-
-// 音符数据结构
-const NOTES = [
-  { id: 'do',  label: 'Do',  color: '#e8a840', targetX: 340, targetY: 360 },
-  { id: 're',  label: 'Re',  color: '#d4746c', targetX: 440, targetY: 360 },
-  { id: 'mi',  label: 'Mi',  color: '#a890c8', targetX: 540, targetY: 360 },
-  { id: 'fa',  label: 'Fa',  color: '#7db8a0', targetX: 640, targetY: 360 },
-  { id: 'sol', label: 'Sol', color: '#6898c8', targetX: 740, targetY: 360 },
-];
-
-const NOTE_W = 60;
-const NOTE_H = 80;
-const DW = 1280;
-const DH = 720;
-
-// 绘制单个音符碎片
-function drawNote(ctx, x, y, w, h, color, label, alpha) {
-  ctx.save();
-  ctx.globalAlpha = alpha !== undefined ? alpha : 1.0;
-
-  // 椭圆头：音符上半部
-  ctx.beginPath();
-  ctx.ellipse(x + w / 2, y + h * 0.35, w * 0.4, h * 0.35, 0, 0, Math.PI * 2);
-  ctx.fillStyle = color;
-  ctx.fill();
-
-  // 竖线：从椭圆底部向下
-  ctx.beginPath();
-  ctx.moveTo(x + w * 0.6, y + h * 0.6);
-  ctx.lineTo(x + w * 0.6, y + h * 0.95);
-  ctx.strokeStyle = color;
-  ctx.lineWidth = 2.5;
-  ctx.lineCap = 'round';
-  ctx.stroke();
-
-  // 小旗标：从竖线顶部向右画小曲线
-  ctx.beginPath();
-  ctx.moveTo(x + w * 0.6, y + h * 0.6);
-  ctx.quadraticCurveTo(x + w * 0.9, y + h * 0.5, x + w * 0.75, y + h * 0.68);
-  ctx.quadraticCurveTo(x + w * 0.9, y + h * 0.75, x + w * 0.6, y + h * 0.78);
-  ctx.closePath();
-  ctx.fillStyle = color;
-  ctx.fill();
-
-  // label：底部居中写字母
-  ctx.fillStyle = 'white';
-  ctx.font = '14px system-ui, "PingFang SC", sans-serif';
-  ctx.textAlign = 'center';
-  ctx.textBaseline = 'bottom';
-  ctx.fillText(label, x + w / 2, y + h - 4);
-
-  ctx.restore();
-}
-
-class Chapter09 {
-  constructor(game) {
-    this.game = game;
-    this._completed = false;
-    this.state = 'playing'; // playing → complete
-    this.completeAnimTime = 0;
-
-    // 为每个音符初始化散落位置
-    this.notes = NOTES.map(n => {
-      const offsetX = (Math.random() > 0.5 ? 1 : -1) * (80 + Math.random() * 70);
-      const offsetY = (Math.random() > 0.5 ? 1 : -1) * (80 + Math.random() * 70);
-      let cx = n.targetX + offsetX;
-      let cy = n.targetY + offsetY;
-      // 确保不跑到画面外
-      cx = Math.max(30, Math.min(1250 - NOTE_W, cx));
-      cy = Math.max(50, Math.min(670 - NOTE_H, cy));
-      return {
-        ...n,
-        currentX: cx,
-        currentY: cy,
-        placed: false,
-      };
-    });
-
-    // 拖拽状态
-    this.dragging = false;
-    this.dragIndex = -1;
-    this.dragOffsetX = 0;
-    this.dragOffsetY = 0;
-  }
-
-  get isComplete() { return this._completed; }
-  get completeTitle() { return '记忆的风铃'; }
-  get completeMessage() { return 'Do Re Mi Fa Sol……风铃响了。'; }
-
-  onEnter() {
-    this.game.input.setHandlers({
-      down: p => this.handleDown(p),
-      move: p => this.handleMove(p),
-      up: p => this.handleUp(p),
-      cancel: () => this.handleCancel(),
-    });
-  }
-
-  onExit() {
-    this.game.input.setHandlers();
-  }
-
-  handleDown(point) {
-    if (this.state !== 'playing') return;
-
-    // 从最上层（数组末尾）开始检测
-    for (let i = this.notes.length - 1; i >= 0; i--) {
-      const n = this.notes[i];
-      if (n.placed) continue;
-      const halfW = NOTE_W / 2;
-      const halfH = NOTE_H / 2;
-      if (
-        point.x >= n.currentX &&
-        point.x <= n.currentX + NOTE_W &&
-        point.y >= n.currentY &&
-        point.y <= n.currentY + NOTE_H
-      ) {
-        this.dragging = true;
-        this.dragIndex = i;
-        this.dragOffsetX = point.x - n.currentX;
-        this.dragOffsetY = point.y - n.currentY;
-        break;
-      }
-    }
-  }
-
-  handleMove(point) {
-    if (!this.dragging || this.dragIndex < 0) return;
-    const n = this.notes[this.dragIndex];
-    n.currentX = point.x - this.dragOffsetX;
-    n.currentY = point.y - this.dragOffsetY;
-  }
-
-  handleUp(point) {
-    if (!this.dragging || this.dragIndex < 0) return;
-    this.dragging = false;
-    const n = this.notes[this.dragIndex];
-    const dist = Math.hypot(n.currentX - n.targetX, n.currentY - n.targetY);
-    if (dist < 50) {
-      // 吸附到目标位置
-      n.currentX = n.targetX;
-      n.currentY = n.targetY;
-      n.placed = true;
-      // 震动反馈
-      try { navigator.vibrate?.(15); } catch {}
-    }
-    this.dragIndex = -1;
-
-    // 检查是否全部归位
-    if (this.notes.every(no => no.placed)) {
-      this.state = 'complete';
-      this.completeAnimTime = 0;
-      this._completed = true;
-      this.game.progress.markChapterComplete(9, 85);
-    }
-  }
-
-  handleCancel() {
-    this.dragging = false;
-    this.dragIndex = -1;
-  }
-
-  update(dt) {
-    if (this.state === 'complete') {
-      this.completeAnimTime += dt;
-    }
-  }
-
-  render(ctx) {
-    ctx.clearRect(0, 0, DW, DH);
-
-    // 1. 背景渐变
-    const bgGrad = ctx.createLinearGradient(0, 0, 0, DH);
-    bgGrad.addColorStop(0, '#2a1810');
-    bgGrad.addColorStop(0.5, '#3d2018');
-    bgGrad.addColorStop(1, '#5a3028');
-    ctx.fillStyle = bgGrad;
-    ctx.fillRect(0, 0, DW, DH);
-
-    // 2. 窗框线条（程序化绘制）
-    ctx.save();
-    ctx.strokeStyle = '#4a3020';
-    ctx.lineWidth = 4;
-    // 窗框外框
-    ctx.strokeRect(40, 30, 1200, 200);
-    // 窗框内部十字线条
-    ctx.beginPath();
-    ctx.moveTo(40, 130); ctx.lineTo(1240, 130);
-    ctx.moveTo(660, 30); ctx.lineTo(660, 230);
-    ctx.stroke();
-
-    // 窗框顶部装饰横线
-    ctx.lineWidth = 2;
-    ctx.beginPath();
-    ctx.moveTo(40, 55); ctx.lineTo(1240, 55);
-    ctx.moveTo(40, 80); ctx.lineTo(1240, 80);
-    ctx.stroke();
-    ctx.restore();
-
-    // 3. 吊线：从窗框底部垂下 5 条细线，对应音符目标位置
-    ctx.save();
-    ctx.strokeStyle = '#6a5040';
-    ctx.lineWidth = 1.2;
-    for (const n of this.notes) {
-      // 线从窗框底部（y=230）到音符目标位置的上端（targetY - NOTE_H/2）
-      const topY = 230;
-      const bottomY = n.targetY + NOTE_H * 0.35; // 连到椭圆头中心高度
-      ctx.beginPath();
-      ctx.moveTo(n.targetX + NOTE_W / 2, topY);
-      ctx.lineTo(n.targetX + NOTE_W / 2, bottomY);
-      ctx.stroke();
-    }
-    ctx.restore();
-
-    // 4. 目标槽位虚线框
-    for (const n of this.notes) {
-      ctx.save();
-      ctx.setLineDash([4, 6]);
-      ctx.strokeStyle = 'rgba(200, 180, 160, 0.35)';
-      ctx.lineWidth = 1.5;
-      ctx.beginPath();
-      ctx.roundRect(n.targetX, n.targetY, NOTE_W, NOTE_H, 6);
-      ctx.stroke();
-      ctx.restore();
-    }
-
-    // 5. 已归位的音符（在目标位置）
-    for (const n of this.notes) {
-      if (n.placed) {
-        // 完成后的风铃摆动动画
-        if (this.state === 'complete' && this.completeAnimTime < 1.5) {
-          const swing = Math.sin(this.completeAnimTime * 8) * 6 * (1 - this.completeAnimTime / 1.5);
-          ctx.save();
-          ctx.translate(n.currentX + NOTE_W / 2, n.currentY + NOTE_H * 0.35);
-          ctx.rotate(swing * Math.PI / 180);
-          drawNote(ctx, -NOTE_W / 2, -NOTE_H * 0.35, NOTE_W, NOTE_H, n.color, n.label);
-          ctx.restore();
-        } else {
-          drawNote(ctx, n.currentX, n.currentY, NOTE_W, NOTE_H, n.color, n.label);
-        }
-      }
-    }
-
-    // 6. 未归位的音符（在散落位置或拖拽位置）
-    for (let i = 0; i < this.notes.length; i++) {
-      const n = this.notes[i];
-      if (n.placed || i === this.dragIndex) continue;
-      drawNote(ctx, n.currentX, n.currentY, NOTE_W, NOTE_H, n.color, n.label);
-    }
-
-    // 7. 拖拽中的音符（最上层）
-    if (this.dragging && this.dragIndex >= 0) {
-      const n = this.notes[this.dragIndex];
-      ctx.save();
-      ctx.shadowColor = 'rgba(255, 220, 160, 0.4)';
-      ctx.shadowBlur = 16;
-      drawNote(ctx, n.currentX, n.currentY, NOTE_W, NOTE_H, n.color, n.label);
-      ctx.restore();
-    }
-
-    // 8. 提示文字
-    drawPrompt(ctx, '将音符拖拽到风铃上', DW / 2, DH - 40, 0);
-  }
-}
-
-
-// ---- src/chapters/ch10_report.js ----
-
-
-const CHAPTERS = [
-  { id: 1, title: '序曲·镜前', memory: 5 },
-  { id: 2, title: '接女儿放学', memory: 15 },
-  { id: 3, title: '迷途', memory: 22 },
-  { id: 4, title: '警局', memory: 30 },
-  { id: 5, title: '归家迷途', memory: 40 },
-  { id: 6, title: '餐桌上的博弈', memory: 52 },
-  { id: 7, title: '惊悚夜醒', memory: 60 },
-  { id: 8, title: '自我和解', memory: 72 },
-  { id: 9, title: '风铃', memory: 85 },
-  { id: 10, title: '认出·不迷路', memory: 100 },
-];
-
-class Chapter10 {
-  constructor(game) {
-    this.game = game;
-
-    // 状态机
-    this.phase = 'porridge'; // porridge → fadeout → report（终态，不推进下一章）
-    this.phaseTime = 0;
-    this.totalTime = 0;
-
-    // 蒸汽粒子
-    this.steam = [];
-    // 点击热区（粥碗中心 + 半径）
-    this.bowlCx = 640;
-    this.bowlCy = 500;
-    this.bowlRx = 140;
-    this.bowlRy = 60;
-    this.bowlHitRadius = 150;
-
-    // 重新开始按钮
-    this.restartBtn = { x: 550, y: 660, w: 180, h: 42 };
-  }
-
-  get isComplete() { return false; } // 终章，永远不推进
-
-  onEnter() {
-    this._initSteam();
-    this.phase = 'porridge';
-    this.phaseTime = 0;
-    this.totalTime = 0;
-
-    this.game.input.setHandlers({
-      down: point => this.handleDown(point),
-      move: () => {},
-      up: () => {},
-      cancel: () => {},
-    });
-  }
-
-  onExit() {
-    this.game.input.setHandlers();
-  }
-
-  _initSteam() {
-    // 生成 10~15 个蒸汽粒子
-    const count = 10 + Math.floor(Math.random() * 6);
-    this.steam = [];
-    for (let i = 0; i < count; i++) {
-      this.steam.push({
-        x: this.bowlCx + (Math.random() - 0.5) * this.bowlRx * 1.2,
-        y: this.bowlCy - 40 + (Math.random() - 0.5) * 30,
-        speed: 25 + Math.random() * 35,
-        drift: (Math.random() - 0.5) * 40,
-        life: Math.random(),
-        phase: Math.random() * Math.PI * 2,
-        size: 5 + Math.random() * 8,
-      });
-    }
-  }
-
-  handleDown(point) {
-    if (this.phase === 'porridge') {
-      // 点击粥碗热区 → 进入 fadeout
-      const dist = Math.hypot(point.x - this.bowlCx, point.y - this.bowlCy);
-      if (dist <= this.bowlHitRadius) {
-        this.phase = 'fadeout';
-        this.phaseTime = 0;
-      }
-    } else if (this.phase === 'report') {
-      // 点击"重新开始"按钮
-      const btn = this.restartBtn;
-      if (point.x >= btn.x && point.x <= btn.x + btn.w &&
-          point.y >= btn.y && point.y <= btn.y + btn.h) {
-        this.game.progress.reset();
-        setTimeout(() => {
-          this.game.chapterManager.switchTo('ch01'); // 回到序曲，不跳过ch01
-        }, 100);
-      }
-    }
-  }
-
-  update(dt) {
-    this.totalTime += dt;
-    this.phaseTime += dt;
-
-    switch (this.phase) {
-      case 'porridge':
-        this._updateSteam(dt);
-        break;
-      case 'fadeout':
-        // 白色遮罩 2s 过渡完成 → 进入 report
-        if (this.phaseTime >= 2.0) {
-          this.phase = 'report';
-          this.phaseTime = 0;
-        }
-        break;
-      case 'report':
-        // 无更新逻辑，静态报告页
-        break;
-    }
-  }
-
-  _updateSteam(dt) {
-    for (const s of this.steam) {
-      s.life += dt * 0.35;
-      if (s.life > 1) {
-        // 重置到粥面
-        s.life = 0;
-        s.x = this.bowlCx + (Math.random() - 0.5) * this.bowlRx * 1.2;
-        s.y = this.bowlCy - 40;
-      }
-      // 向上飘
-      s.y -= s.speed * dt;
-      // 水平漂移
-      s.x += Math.sin(s.life * Math.PI * 2 + s.phase) * s.drift * dt;
-    }
-  }
-
-  render(ctx) {
-    switch (this.phase) {
-      case 'porridge':
-        this._renderPorridge(ctx);
-        break;
-      case 'fadeout':
-        this._renderPorridge(ctx);
-        this._renderFadeout(ctx);
-        break;
-      case 'report':
-        this._renderReport(ctx);
-        break;
-    }
-  }
-
-  // ========================
-  // 阶段1：porridge - 桌上热粥
-  // ========================
-
-  _renderPorridge(ctx) {
-    const { width, height } = this.game;
-
-    // 暖色调室内渐变背景（#3d2018 → #1a0e06）
-    const bgGrad = ctx.createLinearGradient(0, 0, 0, height);
-    bgGrad.addColorStop(0, '#3d2018');
-    bgGrad.addColorStop(1, '#1a0e06');
-    ctx.fillStyle = bgGrad;
-    ctx.fillRect(0, 0, width, height);
-
-    // 木桌（画面下方深棕色矩形条，约 1280×80）
-    const tableY = height - 80;
-    ctx.fillStyle = '#2a1508';
-    ctx.fillRect(0, tableY, width, 80);
-
-    // 木纹线条
-    ctx.strokeStyle = 'rgba(0,0,0,0.15)';
-    ctx.lineWidth = 1;
-    for (let y = tableY + 6; y < height - 4; y += 9) {
-      ctx.beginPath();
-      ctx.moveTo(0, y);
-      ctx.lineTo(width, y);
-      ctx.stroke();
-    }
-
-    // 桌面高光
-    ctx.fillStyle = 'rgba(255,240,220,0.04)';
-    ctx.fillRect(0, tableY, width, 3);
-
-    // 碗（椭圆形，米白瓷碗 #f5ecd7）
-    ctx.save();
-    ctx.shadowColor = 'rgba(0,0,0,0.35)';
-    ctx.shadowBlur = 18;
-    ctx.shadowOffsetY = 6;
-    ctx.fillStyle = '#f5ecd7';
-    ctx.beginPath();
-    ctx.ellipse(this.bowlCx, this.bowlCy, this.bowlRx, this.bowlRy, 0, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.shadowBlur = 0;
-
-    // 碗口边缘高光
-    ctx.strokeStyle = 'rgba(255,255,255,0.3)';
-    ctx.lineWidth = 1.5;
-    ctx.beginPath();
-    ctx.ellipse(this.bowlCx, this.bowlCy - 2, this.bowlRx - 4, this.bowlRy - 4, 0, 0, Math.PI * 2);
-    ctx.stroke();
-
-    // 粥面（碗内稍小的椭圆，颜色 #e8d5b0）
-    ctx.fillStyle = '#e8d5b0';
-    ctx.beginPath();
-    ctx.ellipse(this.bowlCx, this.bowlCy - 6, this.bowlRx - 16, this.bowlRy - 10, 0, 0, Math.PI * 2);
-    ctx.fill();
-
-    // 粥面纹理细节 — 轻微起伏
-    ctx.strokeStyle = 'rgba(200,180,150,0.15)';
-    ctx.lineWidth = 1;
-    for (let i = 0; i < 6; i++) {
-      const angle = (i / 6) * Math.PI * 2;
-      const sx = this.bowlCx + Math.cos(angle) * (this.bowlRx - 30);
-      const sy = this.bowlCy - 6 + Math.sin(angle) * (this.bowlRy - 15);
-      ctx.beginPath();
-      ctx.ellipse(sx, sy, 10, 5, angle, 0, Math.PI * 2);
-      ctx.stroke();
-    }
-
-    ctx.restore();
-
-    // 蒸汽粒子
-    ctx.save();
-    for (const s of this.steam) {
-      // 透明度呼吸：根据 life 做正弦
-      const alpha = Math.sin(s.life * Math.PI) * 0.25;
-      if (alpha <= 0) continue;
-      ctx.fillStyle = `rgba(240, 230, 210, ${alpha})`;
-      ctx.beginPath();
-      ctx.arc(s.x, s.y, s.size * (0.6 + 0.4 * Math.sin(s.life * Math.PI * 3)), 0, Math.PI * 2);
-      ctx.fill();
-
-      // 柔和发光
-      const glowAlpha = alpha * 0.3;
-      ctx.fillStyle = `rgba(240, 230, 210, ${glowAlpha})`;
-      ctx.beginPath();
-      ctx.arc(s.x, s.y, s.size * 2, 0, Math.PI * 2);
-      ctx.fill();
-    }
-    ctx.restore();
-
-    // 提示文字
-    drawPrompt(ctx, '桌上有一碗热粥……喝下去吧。', width / 2, 620, 0);
-  }
-
-  // ========================
-  // 阶段2：fadeout - 白色遮罩过渡
-  // ========================
-
-  _renderFadeout(ctx) {
-    const { width, height } = this.game;
-    const alpha = Math.min(1, this.phaseTime / 2.0);
-    ctx.fillStyle = `rgba(255, 255, 255, ${alpha})`;
-    ctx.fillRect(0, 0, width, height);
-  }
-
-  // ========================
-  // 阶段3：report - 记忆报告页
-  // ========================
-
-  _renderReport(ctx) {
-    const { width, height } = this.game;
-
-    // 底板：优先使用 report_base.png 素材，加载失败回退程序化纸张
-    const baseImg = this.game.images.reportBase;
-    if (baseImg && !baseImg._placeholder) {
-      drawImageCover(ctx, baseImg, width, height);
-    } else {
-      // 纸张底色：米黄色做旧纸张 #f5ecd7
-      ctx.fillStyle = '#f5ecd7';
-      ctx.fillRect(0, 0, width, height);
-
-      // 纸张纹理：散布 60 个微小噪点（#d4c4a0 色调，opacity 0.03~0.08）
-      ctx.save();
-      const seed = 42; // 固定种子，使噪点每次一致
-      for (let i = 0; i < 60; i++) {
-        const nx = ((i * 137 + seed * 73) % width);
-        const ny = ((i * 251 + seed * 97) % height);
-        const opacity = 0.03 + (i % 6) * 0.01;
-        ctx.fillStyle = `rgba(212, 196, 160, ${opacity})`;
-        ctx.beginPath();
-        ctx.arc(nx, ny, 1.5 + (i % 3), 0, Math.PI * 2);
-        ctx.fill();
-      }
-      ctx.restore();
-    }
-
-    // --- 标题区 ---
-    ctx.save();
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-
-    // "记忆报告" 大字
-    ctx.fillStyle = '#2a1a0c';
-    ctx.font = 'bold 36px "PingFang SC", system-ui, sans-serif';
-    ctx.fillText('记忆报告', width / 2, 60);
-
-    // 分隔线
-    ctx.strokeStyle = '#c4a878';
-    ctx.lineWidth = 1;
-    ctx.beginPath();
-    ctx.moveTo((width - 300) / 2, 92);
-    ctx.lineTo((width + 300) / 2, 92);
-    ctx.stroke();
-
-    ctx.restore();
-
-    // --- 10章列表 ---
-    const progress = this.game.progress.load() || { chapter: 1, memory: 0, completed: [] };
-    const completed = progress.completed || [];
-
-    ctx.save();
-    ctx.textAlign = 'left';
-    ctx.textBaseline = 'middle';
-
-    const listStartY = 130;
-    const lineHeight = 48;
-
-    for (let i = 0; i < CHAPTERS.length; i++) {
-      const ch = CHAPTERS[i];
-      const y = listStartY + i * lineHeight;
-      const isCompleted = completed.includes(ch.id);
-
-      // 当前行高亮（如果已完成或当前章节）
-      if (isCompleted) {
-        ctx.save();
-        ctx.fillStyle = 'rgba(196, 168, 120, 0.2)';
-        roundedRect(ctx, 180, y - lineHeight / 2 + 2, 860, lineHeight - 4, 6);
-        ctx.fill();
-        ctx.restore();
-      }
-
-      // 序号+标题 (x:200)
-      ctx.save();
-      if (isCompleted) {
-        ctx.fillStyle = '#2a1a0c';
-      } else {
-        ctx.fillStyle = '#b8a488';
-      }
-      ctx.font = '500 20px "PingFang SC", system-ui, sans-serif';
-      ctx.textAlign = 'left';
-      ctx.textBaseline = 'middle';
-      const label = `${String(ch.id).padStart(2, '0')} ${ch.title}`;
-      ctx.fillText(label, 200, y);
-
-      // 状态标记 (x:1000)
-      ctx.textAlign = 'right';
-      ctx.font = '500 20px "PingFang SC", system-ui, sans-serif';
-      if (isCompleted) {
-        ctx.fillStyle = '#2a1a0c';
-        ctx.fillText('✅', 1000, y);
-      } else {
-        ctx.fillStyle = '#b8a488';
-        ctx.fillText('◻', 1000, y);
-      }
-      ctx.restore();
-
-      // 记忆值标签（左侧边距区域显示 memory 数值）
-      ctx.save();
-      ctx.textAlign = 'right';
-      ctx.textBaseline = 'middle';
-      if (isCompleted) {
-        ctx.fillStyle = '#8a7a60';
-      } else {
-        ctx.fillStyle = '#d0c0a0';
-      }
-      ctx.font = '14px "PingFang SC", system-ui, sans-serif';
-      ctx.fillText(`${ch.memory}%`, 170, y);
-      ctx.restore();
-    }
-
-    ctx.restore();
-
-    // --- 记忆值进度条 (y:610) ---
-    ctx.save();
-
-    const memory = progress.memory || 0;
-    const barX = 340;
-    const barY = 610;
-    const barW = 600;
-    const barH = 20;
-    const barR = 10;
-
-    // 标签
-    ctx.textAlign = 'left';
-    ctx.textBaseline = 'middle';
-    ctx.fillStyle = '#2a1a0c';
-    ctx.font = '500 18px "PingFang SC", system-ui, sans-serif';
-    ctx.fillText('记忆恢复进度', 200, barY + barH / 2);
-
-    // 进度条背景
-    ctx.fillStyle = '#e0d0b0';
-    roundedRect(ctx, barX, barY, barW, barH, barR);
-    ctx.fill();
-
-    // 进度条填充
-    const fillW = Math.min(barW, (barW * memory) / 100);
-    if (fillW > 0) {
-      const fillGrad = ctx.createLinearGradient(barX, barY, barX + fillW, barY);
-      fillGrad.addColorStop(0, '#c4a060');
-      fillGrad.addColorStop(1, '#8B6914');
-      ctx.fillStyle = fillGrad;
-      roundedRect(ctx, barX, barY, fillW, barH, barR);
-      ctx.fill();
-    }
-
-    // 百分比数字（右侧）
-    ctx.textAlign = 'left';
-    ctx.textBaseline = 'middle';
-    ctx.fillStyle = '#2a1a0c';
-    ctx.font = 'bold 22px "PingFang SC", system-ui, sans-serif';
-    ctx.fillText(`${memory}%`, barX + barW + 15, barY + barH / 2);
-
-    ctx.restore();
-
-    // --- "重新开始" 按钮 (y:660) ---
-    ctx.save();
-
-    const btn = this.restartBtn;
-    // 圆角矩形
-    ctx.shadowColor = 'rgba(0,0,0,0.2)';
-    ctx.shadowBlur = 8;
-    ctx.shadowOffsetY = 3;
-    ctx.fillStyle = '#4d3420';
-    roundedRect(ctx, btn.x, btn.y, btn.w, btn.h, 21);
-    ctx.fill();
-
-    ctx.shadowBlur = 0;
-    ctx.shadowOffsetY = 0;
-
-    // 按钮文字
-    ctx.fillStyle = '#ffffff';
-    ctx.font = '600 18px "PingFang SC", system-ui, sans-serif';
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.fillText('重新开始', btn.x + btn.w / 2, btn.y + btn.h / 2);
-
-    ctx.restore();
-  }
-}
-
-
 // ---- src/main_new.js ----
 // 《昨日重现》入口
-
-
-
-
-
 
 
 
@@ -5823,10 +3857,6 @@ async function boot() {
       puzzle: './assets/images/scene_puzzle.jpg',
       mazeMap: './assets/images/scene_maze_map.png',
       sign: './assets/images/sign_scene.png',
-      // —— 2026-07-29 从 Echoes_of_Yesterday 旧仓库迁入的素材 ——
-      mainMenuBg: './assets/images/main_menu_bg.jpg',      // Ch1 镜前场景底图
-      reportBase: './assets/images/report_base.png',       // Ch10 记忆报告底板
-      paperBase: './assets/images/paper_base.png',         // 全局纸张纹理（弹层/签字）
     };
 
     const images = await Loader.loadImages(manifest, (loaded, total) => {
@@ -5839,31 +3869,18 @@ async function boot() {
     game.overlay = new Overlay(game);
     game.chapterManager = new ChapterManager(game);
 
-    // 注册全部 10 章
-    game.chapterManager.register('ch01', Chapter01);
+    // 注册章节（Ch1/4/7/9/10 占位，后续实现）
     game.chapterManager.register('ch02', Chapter02);
     game.chapterManager.register('ch03', Chapter03);
-    game.chapterManager.register('ch04', Chapter04);
     game.chapterManager.register('ch05', Chapter05);
     game.chapterManager.register('ch06', Chapter06);
-    game.chapterManager.register('ch07', Chapter07);
     game.chapterManager.register('ch08', Chapter08);
-    game.chapterManager.register('ch09', Chapter09);
-    game.chapterManager.register('ch10', Chapter10);
 
     window.game = game;
 
-    // 从进度恢复（clamp 到已注册章节，防止白屏）
-    const REGISTERED = ['ch01','ch02','ch03','ch04','ch05','ch06','ch07','ch08','ch09','ch10'];
+    // 从进度恢复
     const saved = game.progress.load();
-    let startChapter = saved?.chapter ? `ch${String(saved.chapter).padStart(2, '0')}` : 'ch01';
-    if (!REGISTERED.includes(startChapter)) {
-      const chNum = parseInt(startChapter.replace('ch', ''), 10);
-      const closest = REGISTERED.map(r => parseInt(r.replace('ch', ''), 10))
-        .filter(n => n <= chNum)
-        .sort((a, b) => b - a)[0];
-      startChapter = closest ? `ch${String(closest).padStart(2, '0')}` : 'ch01';
-    }
+    const startChapter = saved?.chapter ? `ch${String(saved.chapter).padStart(2, '0')}` : 'ch02';
     game.chapterManager.switchTo(startChapter);
 
     new Game(game).start();

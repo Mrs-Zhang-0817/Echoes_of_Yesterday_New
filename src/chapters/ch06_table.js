@@ -16,7 +16,6 @@ export class Chapter06 {
     // Gating 1 — 触觉感知
     this.comfortProgress = 0;
     this.fingerInBowl = false;
-    this._activePointerId = null; // 多指防干扰
 
     // 蒸汽粒子
     this.steam = this._initSteam();
@@ -95,12 +94,9 @@ export class Chapter06 {
 
   handleDown(point) {
     try {
-      // 多指防干扰：已有激活手指时忽略其它手指
-      if (this._activePointerId != null && point.pointerId !== this._activePointerId) return;
       if (this.phase === 'narrative') {
         if (this.phaseTime > 1.5) { this.phase = 'gating1'; this.phaseTime = 0; }
       } else if (this.phase === 'gating1') {
-        this._activePointerId = point.pointerId;
         if (hitBowl(point.x, point.y)) {
           this.fingerInBowl = true;
         }
@@ -126,16 +122,13 @@ export class Chapter06 {
     } catch (e) { console.error('Ch06 handleMove:', e); }
   }
 
-  handleUp(point) {
-    if (point.pointerId !== this._activePointerId) return;
-    this._activePointerId = null;
+  handleUp(_point) {
     if (this.phase === 'gating1') {
       this.fingerInBowl = false;
     }
   }
 
   handleCancel() {
-    this._activePointerId = null;
     this.fingerInBowl = false;
   }
 
@@ -175,7 +168,17 @@ export class Chapter06 {
         break;
 
       case 'complete':
-        // 由 ChapterManager 检测 isComplete 统一弹 Overlay
+        if (this.phaseTime >= 1) {
+          this.game.progress.save('ch06_complete', true);
+          this.game.overlay.show({
+            type: 'complete',
+            title: '一碗热面，唤醒沉睡的味觉',
+            message: '记忆解锁 45%',
+            buttons: [
+              { text: '继续下一章节', action: () => this.game.chapterManager.next() },
+            ],
+          });
+        }
         break;
     }
   }

@@ -1,50 +1,49 @@
+import { roundedRect } from '../utils/sceneUtils.js';
+
 export class Overlay {
   constructor(game) {
     this.game = game;
-    this.active = null;
+    this.active = null; // null 或 { type, title, message, buttons, time }
     this._inputHandlers = null;
-    this._savedHandlers = null;
   }
 
   show(config) {
-    if (this.active) return;
     this.active = { ...config, time: 0 };
-    // 保存当前 handler，hide 时还原
-    this._savedHandlers = { ...this.game.input.handlers };
-    this.game.input.setHandlers({
+    // 接管输入：在弹层激活时，原始章节的 input handler 被临时覆盖
+    this._inputHandlers = {
       down: point => this.handleDown(point),
       move: () => {},
       up: () => {},
       cancel: () => {},
-    });
+    };
   }
 
   hide() {
     this.active = null;
-    if (this._savedHandlers && Object.keys(this._savedHandlers).length > 0) {
-      this.game.input.setHandlers(this._savedHandlers);
-    } else {
-      this.game.input.setHandlers();
-    }
-    this._savedHandlers = null;
+    // 恢复时由章节的 onEnter 重新设置 handler
   }
 
-  isActive() { return this.active !== null; }
+  isActive() {
+    return this.active !== null;
+  }
 
   handleDown(point) {
     if (!this.active) return;
     const buttons = this.active.buttons || [];
-    for (let i = 0; i < buttons.length; i++) {
-      const btn = buttons[i];
-      const bbox = btn.bbox;
-      if (!bbox) continue;
-      if (point.x >= bbox.x && point.x <= bbox.x + bbox.w &&
-          point.y >= bbox.y && point.y <= bbox.y + bbox.h) {
+    for (const btn of buttons) {
+      if (this.hitButton(point, btn)) {
         btn.action?.();
         this.hide();
         return;
       }
     }
+  }
+
+  hitButton(point, btn) {
+    const bbox = btn.bbox;
+    if (!bbox) return false;
+    return point.x >= bbox.x && point.x <= bbox.x + bbox.w &&
+           point.y >= bbox.y && point.y <= bbox.y + bbox.h;
   }
 
   update(dt) {
@@ -66,18 +65,9 @@ export class Overlay {
     const cardH = 280;
     const cx = (width - cardW) / 2;
     const cy = (height - cardH) / 2;
-    const centerX = width / 2;
 
     // 卡片背景
-    const r = 16;
-    ctx.beginPath();
-    ctx.moveTo(cx + r, cy);
-    ctx.lineTo(cx + cardW - r, cy);
-    ctx.arcTo(cx + cardW, cy, cx + cardW, cy + r, r);
-    ctx.arcTo(cx + cardW, cy + cardH, cx + cardW - r, cy + cardH, r);
-    ctx.arcTo(cx + r, cy + cardH, cx, cy + cardH, r);
-    ctx.arcTo(cx, cy + r, cx, cy, r);
-    ctx.closePath();
+    roundedRect(ctx, cx, cy, cardW, cardH, 16);
     const cardGrad = ctx.createLinearGradient(cx, cy, cx, cy + cardH);
     cardGrad.addColorStop(0, '#fcf5e6');
     cardGrad.addColorStop(1, '#f0deb4');
@@ -92,16 +82,13 @@ export class Overlay {
     ctx.font = 'bold 24px system-ui, "PingFang SC", sans-serif';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    ctx.fillText(config.title, centerX, cy + 48);
+    ctx.fillText(config.title, width / 2, cy + 48);
 
-    // 消息（支持多行）
+    // 消息
     if (config.message) {
       ctx.fillStyle = '#4d3420';
       ctx.font = '17px system-ui, "PingFang SC", sans-serif';
-      const lines = config.message.split('\n');
-      lines.forEach((line, i) => {
-        ctx.fillText(line, centerX, cy + 100 + i * 26);
-      });
+      ctx.fillText(config.message, width / 2, cy + 100);
     }
 
     // 按钮
@@ -111,23 +98,18 @@ export class Overlay {
     const gap = 16;
     const totalBtnW = btns.length * btnW + (btns.length - 1) * gap;
     const startBtnX = (width - totalBtnW) / 2;
-    const btnTop = cy + cardH - 68;
+    const btnY = cy + cardH - 50 - btnH / 2;
+
+    config._btnRects = [];
 
     for (let i = 0; i < btns.length; i++) {
       const bx = startBtnX + i * (btnW + gap);
-      const by = btnTop;
+      const by = btnY - btnH / 2;
+      config._btnRects.push({ x: bx, y: by, w: btnW, h: btnH });
       btns[i].bbox = { x: bx, y: by, w: btnW, h: btnH };
 
       // 按钮背景
-      ctx.beginPath();
-      const br = 8;
-      ctx.moveTo(bx + br, by);
-      ctx.lineTo(bx + btnW - br, by);
-      ctx.arcTo(bx + btnW, by, bx + btnW, by + br, br);
-      ctx.arcTo(bx + btnW, by + btnH, bx + btnW - br, by + btnH, br);
-      ctx.arcTo(bx + br, by + btnH, bx, by + btnH, br);
-      ctx.arcTo(bx, by + br, bx, by, br);
-      ctx.closePath();
+      roundedRect(ctx, bx, by, btnW, btnH, 8);
       ctx.fillStyle = '#4d3420';
       ctx.fill();
 

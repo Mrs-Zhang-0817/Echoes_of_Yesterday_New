@@ -21,7 +21,6 @@ export class Chapter05 {
     this.sourcesFound = 0;
     this.isLocking = false;
     this.lockTargetIdx = -1;
-    this._activePointerId = null; // 多指防干扰
     this.sources = SOUND_SOURCES.map(s => ({ ...s, found: false, lockProgress: 0, wavePhase: s.wavePhase }));
 
     // Gating 2
@@ -59,15 +58,12 @@ export class Chapter05 {
 
   handleDown(point) {
     try {
-      // 多指防干扰：已有激活手指时忽略其它手指
-      if (this._activePointerId != null && point.pointerId !== this._activePointerId) return;
       if (this.phase === 'narrative') {
         if (this.phaseTime > 1.5) {
           this.phase = 'gating1';
           this.phaseTime = 0;
         }
       } else if (this.phase === 'gating1') {
-        this._activePointerId = point.pointerId;
         this.dragging = true;
         this.dragStartX = point.x;
         this.scanStartX = this.scanPos;
@@ -120,14 +116,9 @@ export class Chapter05 {
         }
       }
     }
-    if (this.phase === 'gating2') {
-      this.hoveredBtn = this._getHoveredButton(point);
-    }
   }
 
-  handleUp(point) {
-    if (point.pointerId !== this._activePointerId) return;
-    this._activePointerId = null;
+  handleUp(_point) {
     if (this.phase === 'gating1') {
       this.dragging = false;
       if (this.isLocking && this.lockTargetIdx >= 0) {
@@ -140,7 +131,6 @@ export class Chapter05 {
   }
 
   handleCancel() {
-    this._activePointerId = null;
     this.dragging = false;
     if (this.isLocking && this.lockTargetIdx >= 0) {
       this.sources[this.lockTargetIdx].lockProgress = 0;
@@ -159,16 +149,6 @@ export class Chapter05 {
       if (dist < minDist) { minDist = dist; idx = i; }
     }
     return idx;
-  }
-
-  _getHoveredButton(point) {
-    for (let i = 0; i < ELEVATOR_BUTTONS.length; i++) {
-      const r = getButtonRect(i);
-      if (point.x >= r.x && point.x <= r.x + r.w && point.y >= r.y && point.y <= r.y + r.h) {
-        return i;
-      }
-    }
-    return -1;
   }
 
   handleButtonPress(idx) {
@@ -230,6 +210,7 @@ export class Chapter05 {
         break;
 
       case 'gating2':
+        this.hoveredBtn = -1;
         if (this.errorTimer > 0) this.errorTimer = Math.max(0, this.errorTimer - dt);
         break;
 
@@ -244,7 +225,17 @@ export class Chapter05 {
         break;
 
       case 'complete':
-        // 由 ChapterManager 检测 isComplete 统一弹 Overlay
+        if (this.phaseTime >= 2.5) {
+          this.game.progress.save('ch05_complete', true);
+          this.game.overlay.show({
+            type: 'complete',
+            title: '记忆中……有什么被唤醒了。',
+            message: '记忆解锁 35%',
+            buttons: [
+              { text: '继续下一章节', action: () => this.game.chapterManager.next() }
+            ],
+          });
+        }
         break;
     }
   }
