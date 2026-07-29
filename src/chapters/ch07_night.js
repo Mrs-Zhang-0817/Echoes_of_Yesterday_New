@@ -176,6 +176,8 @@ export class Chapter07 {
           this._complete = true;
           this.phase = 'complete';
           this.phaseTime = 0;
+          // P1-1 修复：原本缺失存档调用，导致 ch07 进度不落库、刷新回退、报告页永远未完成
+          this.game.progress.markChapterComplete(7, 60);
         }
         break;
 
