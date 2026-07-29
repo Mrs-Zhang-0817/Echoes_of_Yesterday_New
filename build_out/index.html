@@ -338,39 +338,34 @@ class Overlay {
   constructor(game) {
     this.game = game;
     this.active = null;
-    this._savedHandlers = null;
+    this._overlayHandlers = null;
   }
 
   show(config) {
-    // 防止每帧重复弹
     if (this.active) return;
     this.active = { ...config, time: 0 };
-    // 接管输入：保存当前 handler，设置 overlay 自己的 handler
-    this._savedHandlers = { ...this.game.input.handlers };
-    this.game.input.setHandlers({
-      down: point => this.handleDown(point),
+
+    // 接管输入
+    this._overlayHandlers = {
+      down: point => this._handleDown(point),
       move: () => {},
       up: () => {},
       cancel: () => {},
-    });
+    };
+    this.game.input.setHandlers(this._overlayHandlers);
   }
 
   hide() {
     this.active = null;
-    // 还原之前保存的 handler
-    if (this._savedHandlers && Object.keys(this._savedHandlers).length > 0) {
-      this.game.input.setHandlers(this._savedHandlers);
-    } else {
-      this.game.input.setHandlers();
-    }
-    this._savedHandlers = null;
+    this.game.input.setHandlers();
+    this.game.chapterManager.currentChapter?.onEnter?.();
   }
 
   isActive() {
     return this.active !== null;
   }
 
-  handleDown(point) {
+  _handleDown(point) {
     if (!this.active) return;
     const buttons = this.active.buttons || [];
     for (const btn of buttons) {
