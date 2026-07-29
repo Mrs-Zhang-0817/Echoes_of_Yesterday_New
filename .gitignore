@@ -13,3 +13,9 @@ backups/
 Echoes_of_Yesterday
 test-results/
 visual-reports/
+
+# 调试产物（不进版本库）
+/ch*.png
+.playwright-mcp/
+.tmp_feishu_imgs/
+build_out/screenshots/

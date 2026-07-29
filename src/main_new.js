@@ -91,6 +91,15 @@ async function boot() {
     const manifest = {
       // —— Ch2 拼图 ——
       puzzle:     './assets/images/scene_puzzle.jpg',
+      // —— Ch4 警局 ——
+      ch4_police_01: './assets/images/ch4_police_01.png',
+      ch4_police_02: './assets/images/ch4_police_02.png',
+      ch4_police_03: './assets/images/ch4_police_03.png',
+      ch4_police_04: './assets/images/ch4_police_04.png',
+      ch4_police_05: './assets/images/ch4_police_05.png',
+      ch4_police_06: './assets/images/ch4_police_06.png',
+      ch4_police_07: './assets/images/ch4_police_07.png',
+      ch4_police_08: './assets/images/ch4_police_08.png',
       // —— Ch8 签字关卡 ——
       sign:              './assets/images/sign_scene.png',
       ch8_corridor:      './assets/images/ch8_corridor.jpg',

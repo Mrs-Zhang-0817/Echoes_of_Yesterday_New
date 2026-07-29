@@ -18,6 +18,9 @@ export class ChapterManager {
 
   switchTo(name) {
     if (!this.registry.has(name)) return;
+    // 清除旧 overlay，防止级联推进
+    this.game.overlay?.hide();
+    this._completeFired = false;
     if (!this.currentChapter) {
       this.activate(name);
       this.transition = { ...this.transition, phase: 'in', alpha: 1 };

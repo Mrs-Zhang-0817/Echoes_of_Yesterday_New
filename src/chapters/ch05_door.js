@@ -40,6 +40,8 @@ export class Chapter05 {
   }
 
   get isComplete() { return this._complete; }
+  get completeTitle() { return '记忆中……有什么被唤醒了。'; }
+  get completeMessage() { return '记忆解锁 35%'; }
 
   onEnter() {
     this.game.input.setHandlers({
@@ -225,16 +227,9 @@ export class Chapter05 {
         break;
 
       case 'complete':
-        if (this.phaseTime >= 2.5) {
-          this.game.progress.save('ch05_complete', true);
-          this.game.overlay.show({
-            type: 'complete',
-            title: '记忆中……有什么被唤醒了。',
-            message: '记忆解锁 35%',
-            buttons: [
-              { text: '继续下一章节', action: () => this.game.chapterManager.next() }
-            ],
-          });
+        if (!this._progressSaved) {
+          this._progressSaved = true;
+          this.game.progress.markChapterComplete(5, 40);
         }
         break;
     }

@@ -253,9 +253,9 @@ export class Chapter01 {
     }
 
     // === 碎片粒子 ===
-    ctx.save();
     for (const p of this.shatterParticles) {
       const alpha = Math.min(1, p.life * 1.5);
+      ctx.save();
       ctx.globalAlpha = alpha;
       ctx.fillStyle = p.color;
       ctx.translate(p.x, p.y);
@@ -275,9 +275,8 @@ export class Chapter01 {
       ctx.lineWidth = 0.5;
       ctx.stroke();
 
-      ctx.setTransform(1, 0, 0, 1, 0, 0);
+      ctx.restore();
     }
-    ctx.restore();
 
     // === 底部分阶段提示 ===
     if (this.phase === 'idle') {

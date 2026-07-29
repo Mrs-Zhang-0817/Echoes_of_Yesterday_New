@@ -40,6 +40,8 @@ export class Chapter06 {
   }
 
   get isComplete() { return this._complete; }
+  get completeTitle() { return '一碗热面，唤醒沉睡的味觉'; }
+  get completeMessage() { return '记忆解锁 45%'; }
 
   _initSteam() {
     const s = [];
@@ -168,16 +170,9 @@ export class Chapter06 {
         break;
 
       case 'complete':
-        if (this.phaseTime >= 1) {
-          this.game.progress.save('ch06_complete', true);
-          this.game.overlay.show({
-            type: 'complete',
-            title: '一碗热面，唤醒沉睡的味觉',
-            message: '记忆解锁 45%',
-            buttons: [
-              { text: '继续下一章节', action: () => this.game.chapterManager.next() },
-            ],
-          });
+        if (this.phaseTime >= 1 && !this._progressSaved) {
+          this._progressSaved = true;
+          this.game.progress.markChapterComplete(6, 52);
         }
         break;
     }

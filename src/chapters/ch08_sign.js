@@ -116,7 +116,7 @@ export class Chapter08 {
 
   get isComplete() { return this._completed; }
   get completeTitle() { return '辨认成功'; }
-  get completeMessage() { return '李向阳'; }
+  get completeMessage() { return '——\n李向阳'; }
 
   onEnter() {
     this.game.input.setHandlers({
@@ -328,7 +328,7 @@ export class Chapter08 {
     // 弹层
     if (this.timeoutFired) this.renderOverlay(ctx, '时间过了许久', '连笔写——手记得的，疾病夺不走', '再试试');
     if (this.showHint) this.renderOverlay(ctx, '笔迹畸变规则', '横↔竖、撇↔捺，试试连笔写', '明白了');
-    if (this._completed) this.renderOverlay(ctx, '辨认成功', '——\n李向阳', '再写一次', true);
+    // 完成弹层由 ChapterManager 统一处理
   }
 
   renderSign(ctx) {

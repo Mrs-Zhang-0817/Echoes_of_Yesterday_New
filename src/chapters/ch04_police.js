@@ -1,4 +1,4 @@
-import { drawPrompt, roundedRect } from '../utils/sceneUtils.js';
+import { drawImageCover, drawPrompt, roundedRect } from '../utils/sceneUtils.js';
 
 export class Chapter04 {
   constructor(game) {
@@ -106,7 +106,15 @@ export class Chapter04 {
   // ---------- 背景 ----------
 
   drawBackground(ctx, width, height) {
-    // 深蓝灰渐变，警局冷色调
+    // 优先使用真实警局场景底图，加载失败回退程序化
+    const bgImg = this.game.images.ch4_police_01;
+    if (bgImg) {
+      drawImageCover(ctx, bgImg, width, height);
+      ctx.fillStyle = 'rgba(8, 12, 16, 0.30)';
+      ctx.fillRect(0, 0, width, height);
+      return;
+    }
+    // 回退：程序化渐变
     const grad = ctx.createLinearGradient(0, 0, 0, height);
     grad.addColorStop(0, '#1a2025');
     grad.addColorStop(1, '#252d35');
