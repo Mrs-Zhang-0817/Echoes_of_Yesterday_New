@@ -48,8 +48,6 @@ export class Loader {
     ctx.font = '11px sans-serif';
     ctx.fillStyle = '#8a93a8';
     ctx.fillText('missing asset', w / 2, h / 2 + 12);
-    // 兼容个别读取 .src / .complete 的代码路径
-    try { canvas.src = source; canvas.complete = true; } catch { /* 忽略 */ }
     return canvas;
   }
 }

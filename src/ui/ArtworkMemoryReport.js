@@ -2,8 +2,10 @@
 // 由 Overlay 在普通章节完成时调用；只负责呈现报告底图 + 进度动画 + 继续按钮，
 // 不触碰章节互动逻辑。统一接口：open / update / render / handleDown / isReady（见 src/narrative/README.md）。
 import { roundedRect } from '../utils/sceneUtils.js';
+import CHAPTERS from '../data/chapters.json' with { type: 'json' };
 
-export const REPORT_PROGRESS = [0, 5, 15, 22, 30, 40, 52, 60, 72, 85, 100];
+const _sorted = [...CHAPTERS].sort((a, b) => a.order - b.order);
+export const REPORT_PROGRESS = [0, ..._sorted.map(ch => ch.memoryUnlock)];
 
 const ASSET_BASE = './assets/images/report/';
 const BASE_URL = './assets/images/report_base.png';

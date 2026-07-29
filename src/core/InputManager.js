@@ -4,6 +4,7 @@ export class InputManager {
     this.width = width;
     this.height = height;
     this.handlers = {};
+    this._handlerStack = [];
 
     // 绑定处理函数以便后续解绑
     this._onPointerDown = (event) => this.dispatch('down', event);
@@ -67,5 +68,6 @@ export class InputManager {
     this.canvas.removeEventListener('pointerleave', this._onPointerLeave);
     this.canvas.removeEventListener('contextmenu', this._onContextMenu);
     this.handlers = {};
+    this._handlerStack = [];
   }
 }

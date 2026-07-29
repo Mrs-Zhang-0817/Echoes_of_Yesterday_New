@@ -26,7 +26,7 @@
 }, {
   "id": "ch06_table",
   "title": "餐桌上的博弈",
-  "memoryUnlock": 50,
+  "memoryUnlock": 52,
   "order": 6
 }, {
   "id": "ch07_night",
@@ -41,7 +41,7 @@
 }, {
   "id": "ch09_chime",
   "title": "风铃",
-  "memoryUnlock": 90,
+  "memoryUnlock": 85,
   "order": 9
 }, {
   "id": "ch10_report",
