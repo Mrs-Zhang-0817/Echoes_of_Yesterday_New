@@ -14,6 +14,13 @@ Echoes_of_Yesterday
 test-results/
 visual-reports/
 
+# 非运行资源（迁移主仓库时排除，仅保留能跑起来所需）
+assets/art-library/
+assets-source/
+build_out/
+*.zip
+.workbuddy/
+
 # 调试产物（不进版本库）
 /ch*.png
 .playwright-mcp/
