@@ -3,24 +3,33 @@ import { roundedRect } from '../utils/sceneUtils.js';
 export class Overlay {
   constructor(game) {
     this.game = game;
-    this.active = null; // null 或 { type, title, message, buttons, time }
-    this._inputHandlers = null;
+    this.active = null;
+    this._savedHandlers = null;
   }
 
   show(config) {
+    // 防止每帧重复弹
+    if (this.active) return;
     this.active = { ...config, time: 0 };
-    // 接管输入：在弹层激活时，原始章节的 input handler 被临时覆盖
-    this._inputHandlers = {
+    // 接管输入：保存当前 handler，设置 overlay 自己的 handler
+    this._savedHandlers = { ...this.game.input.handlers };
+    this.game.input.setHandlers({
       down: point => this.handleDown(point),
       move: () => {},
       up: () => {},
       cancel: () => {},
-    };
+    });
   }
 
   hide() {
     this.active = null;
-    // 恢复时由章节的 onEnter 重新设置 handler
+    // 还原之前保存的 handler
+    if (this._savedHandlers && Object.keys(this._savedHandlers).length > 0) {
+      this.game.input.setHandlers(this._savedHandlers);
+    } else {
+      this.game.input.setHandlers();
+    }
+    this._savedHandlers = null;
   }
 
   isActive() {
@@ -31,19 +40,15 @@ export class Overlay {
     if (!this.active) return;
     const buttons = this.active.buttons || [];
     for (const btn of buttons) {
-      if (this.hitButton(point, btn)) {
+      const bbox = btn.bbox;
+      if (!bbox) continue;
+      if (point.x >= bbox.x && point.x <= bbox.x + bbox.w &&
+          point.y >= bbox.y && point.y <= bbox.y + bbox.h) {
         btn.action?.();
         this.hide();
         return;
       }
     }
-  }
-
-  hitButton(point, btn) {
-    const bbox = btn.bbox;
-    if (!bbox) return false;
-    return point.x >= bbox.x && point.x <= bbox.x + bbox.w &&
-           point.y >= bbox.y && point.y <= bbox.y + bbox.h;
   }
 
   update(dt) {
@@ -65,9 +70,11 @@ export class Overlay {
     const cardH = 280;
     const cx = (width - cardW) / 2;
     const cy = (height - cardH) / 2;
+    const centerX = width / 2;
+    const r = 16;
 
     // 卡片背景
-    roundedRect(ctx, cx, cy, cardW, cardH, 16);
+    roundedRect(ctx, cx, cy, cardW, cardH, r);
     const cardGrad = ctx.createLinearGradient(cx, cy, cx, cy + cardH);
     cardGrad.addColorStop(0, '#fcf5e6');
     cardGrad.addColorStop(1, '#f0deb4');
@@ -82,13 +89,16 @@ export class Overlay {
     ctx.font = 'bold 24px system-ui, "PingFang SC", sans-serif';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    ctx.fillText(config.title, width / 2, cy + 48);
+    ctx.fillText(config.title, centerX, cy + 48);
 
     // 消息
     if (config.message) {
       ctx.fillStyle = '#4d3420';
       ctx.font = '17px system-ui, "PingFang SC", sans-serif';
-      ctx.fillText(config.message, width / 2, cy + 100);
+      const lines = config.message.split('\n');
+      lines.forEach((line, i) => {
+        ctx.fillText(line, centerX, cy + 100 + i * 26);
+      });
     }
 
     // 按钮
@@ -98,22 +108,17 @@ export class Overlay {
     const gap = 16;
     const totalBtnW = btns.length * btnW + (btns.length - 1) * gap;
     const startBtnX = (width - totalBtnW) / 2;
-    const btnY = cy + cardH - 50 - btnH / 2;
-
-    config._btnRects = [];
+    const btnTop = cy + cardH - 68;
 
     for (let i = 0; i < btns.length; i++) {
       const bx = startBtnX + i * (btnW + gap);
-      const by = btnY - btnH / 2;
-      config._btnRects.push({ x: bx, y: by, w: btnW, h: btnH });
+      const by = btnTop;
       btns[i].bbox = { x: bx, y: by, w: btnW, h: btnH };
 
-      // 按钮背景
       roundedRect(ctx, bx, by, btnW, btnH, 8);
       ctx.fillStyle = '#4d3420';
       ctx.fill();
 
-      // 按钮文字
       ctx.fillStyle = '#fcf5e6';
       ctx.font = '600 16px system-ui, "PingFang SC", sans-serif';
       ctx.fillText(btns[i].text, bx + btnW / 2, by + btnH / 2);
