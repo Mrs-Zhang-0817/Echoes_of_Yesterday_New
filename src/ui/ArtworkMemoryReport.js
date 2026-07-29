@@ -7,6 +7,22 @@ export const REPORT_PROGRESS = [0, 5, 15, 22, 30, 40, 52, 60, 72, 85, 100];
 
 const ASSET_BASE = './assets/images/report/';
 const BASE_URL = './assets/images/report_base.png';
+const REPORT_SCENE_PATHS = [
+  null,
+  './assets/images/ch1_bg_bedroom.jpg',
+  './assets/images/ch2_bg_livingroom.png',
+  './assets/images/ch3_bg_old_community.jpg',
+  './assets/images/ch4_police_03.png',
+  './assets/images/ch5_bg_elevator.png',
+  './assets/images/ch6_bg_diningroom.jpg',
+  './assets/images/ch7_bg_bedroom_night.jpg',
+  './assets/images/ch8_corridor.jpg',
+  './assets/images/ch9_balcony.jpg',
+  './assets/images/ch10_livingroom.jpg',
+];
+
+// 报告底板左侧的大照片框；所有章节共用同一位置，仅替换其中的原场景图。
+const PHOTO_SLOT = { x: 145, y: 282, width: 420, height: 318 };
 
 // 按 URL 缓存 Image，避免重复网络请求 / 重复解码
 const _cache = new Map();
@@ -23,6 +39,10 @@ function loadImage(url) {
 
 export function getReportAssetPath(chapterNumber) {
   return `${ASSET_BASE}ch${String(chapterNumber).padStart(2, '0')}.png`;
+}
+
+export function getReportScenePath(chapterNumber) {
+  return REPORT_SCENE_PATHS[chapterNumber] || REPORT_SCENE_PATHS[1];
 }
 
 function reducedMotion() {
@@ -65,7 +85,7 @@ export class ArtworkMemoryReport {
     this._progress = memoryFrom;
 
     this._baseEntry = loadImage(BASE_URL);
-    this._chapterEntry = loadImage(getReportAssetPath(chapterNumber));
+    this._chapterEntry = loadImage(getReportScenePath(chapterNumber));
     this._btnEntry = loadImage(`${ASSET_BASE}button_continue.png`);
 
     this._layoutButton();
@@ -96,24 +116,15 @@ export class ArtworkMemoryReport {
   render(ctx, width, height) {
     if (!this.active) return;
 
-    // 1) 通用底图铺满（任何章都有，保证不白屏）
+    // 1) 报告底板铺满（任何章都有，保证不白屏）
     this._drawCover(this._baseEntry, ctx, width, height, 1);
-    // 2) 章节专属底图（未失败则覆盖在通用底图之上）
+    // 2) 章节原场景图贴入底板的照片框，不能再整张覆盖报告底板。
     if (this._chapterEntry && this._chapterEntry.loaded && !this._chapterEntry.failed) {
-      this._drawCover(this._chapterEntry, ctx, width, height, 1);
+      this._drawPhoto(this._chapterEntry, ctx);
     }
 
-    // 3) 遮罩 + 文案 + 进度条
+    // 3) 只保留进度条；标题已经印在报告底板上，避免重复叠字。
     ctx.save();
-    ctx.fillStyle = 'rgba(12, 8, 5, 0.30)';
-    ctx.fillRect(0, 0, width, height);
-
-    ctx.fillStyle = '#f4e2bd';
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.font = '600 27px "PingFang SC", system-ui, sans-serif';
-    ctx.fillText(`第 ${this.chapterNumber} 章 · 记忆恢复`, width / 2, height * 0.15);
-
     const barW = width * 0.5;
     const barH = 14;
     const bx = (width - barW) / 2;
@@ -162,6 +173,38 @@ export class ArtworkMemoryReport {
     const dh = r.h * scale;
     ctx.save();
     ctx.drawImage(this._btnEntry.img, dx, dy, dw, dh);
+    ctx.restore();
+  }
+
+  _drawPhoto(entry, ctx) {
+    const { img } = entry;
+    const { x, y, width, height } = PHOTO_SLOT;
+    const imageRatio = (img.width || 1) / (img.height || 1);
+    const slotRatio = width / height;
+    let drawWidth = width;
+    let drawHeight = height;
+    let drawX = x;
+    let drawY = y;
+
+    if (imageRatio > slotRatio) {
+      drawWidth = height * imageRatio;
+      drawX = x - (drawWidth - width) / 2;
+    } else {
+      drawHeight = width / imageRatio;
+      drawY = y - (drawHeight - height) / 2;
+    }
+
+    ctx.save();
+    roundedRect(ctx, x, y, width, height, 5);
+    ctx.clip();
+    ctx.drawImage(img, drawX, drawY, drawWidth, drawHeight);
+    ctx.restore();
+
+    ctx.save();
+    ctx.strokeStyle = 'rgba(88, 57, 27, 0.55)';
+    ctx.lineWidth = 2;
+    roundedRect(ctx, x, y, width, height, 5);
+    ctx.stroke();
     ctx.restore();
   }
 

@@ -1,583 +1,281 @@
-// Ch8 签字——从独立 app 重写为 Chapter 接口
-
-function avg(arr) { return arr.reduce((s, v) => v + s, 0) / arr.length; }
-
-function bbox(pts) {
-  let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
-  for (const p of pts) {
-    if (p.x < x0) x0 = p.x;
-    if (p.y < y0) y0 = p.y;
-    if (p.x > x1) x1 = p.x;
-    if (p.y > y1) y1 = p.y;
-  }
-  return { x: x0, y: y0, w: x1 - x0, h: y1 - y0 };
-}
-
-// 笔画分类
-function classifyStroke(pts) {
-  if (pts.length < 3) return 'dot';
-  const bb = bbox(pts);
-  const diag = Math.hypot(bb.w, bb.h);
-  if (diag < 18) return 'dot';
-
-  const dx = pts[pts.length - 1].x - pts[0].x;
-  const dy = pts[pts.length - 1].y - pts[0].y;
-  const len = Math.hypot(dx, dy);
-  if (len < 12) return 'dot';
-
-  let dirChanges = 0, prevDir = null;
-  const step = Math.max(1, Math.floor(pts.length / 8));
-  for (let i = step; i < pts.length - step; i += step) {
-    const cd = { x: pts[i].x - pts[i - step].x, y: pts[i].y - pts[i - step].y };
-    const nd = Math.hypot(cd.x, cd.y);
-    if (nd < 4) continue;
-    const deg = Math.atan2(cd.y, cd.x) * 57.3;
-    if (prevDir !== null && Math.abs(deg - prevDir) > 40) dirChanges++;
-    prevDir = deg;
-  }
-  if (dirChanges >= 2) return 'fold';
-
-  let angle = Math.atan2(dy, dx) * 57.3;
-  if (angle < 0) angle += 180;
-  const ratio = bb.w / (bb.h || 1);
-
-  if (ratio > 2.2) return 'horizontal';
-  if (ratio < 0.45) return 'vertical';
-  if (angle < 30 || angle > 150) return 'horizontal';
-  if (angle > 65 && angle < 115) return 'vertical';
-  if (angle >= 30 && angle <= 65) return 'na';
-  if (angle >= 115 && angle <= 150) return 'pie';
-  return 'horizontal';
-}
-
-// 畸变规则：横↔竖、撇↔捺
-function deformStroke(pts, type) {
-  if (pts.length < 2) return { deformed: [...pts], type };
-  const cx = avg(pts.map(p => p.x)), cy = avg(pts.map(p => p.y));
-  switch (type) {
-    case 'horizontal':
-    case 'vertical':
-      return {
-        type: type === 'horizontal' ? 'vertical' : 'horizontal',
-        deformed: pts.map(p => ({ x: cx + (p.y - cy), y: cy - (p.x - cx) })),
-      };
-    case 'pie':
-      return { type: 'na', deformed: pts.map(p => ({ x: cx - (p.x - cx), y: p.y })) };
-    case 'na':
-      return { type: 'pie', deformed: pts.map(p => ({ x: cx - (p.x - cx), y: p.y })) };
-    default:
-      return { deformed: [...pts], type };
-  }
-}
+import { SmileDetector } from '../interactions/SmileDetector.js';
 
 export class Chapter08 {
   constructor(game) {
     this.game = game;
-    this.DW = 1280; this.DH = 720;
-    this.strokes = [];
-    this.cur = [];
-    this.wDown = false;
-    this.wPid = null;
-    this.attempts = 0;
-    this.passed = false;
-    this.hintShown = false;
-    this.elapsed = 0;
-    this.totalDT = 0;
-
-    // 纸张纹理
-    this.texture = [];
-    for (let i = 0; i < 120; i++) {
-      this.texture.push({ x: Math.random() * this.DW, y: Math.random() * this.DH, r: 0.3 + Math.random() * 2.8, a: 0.015 + Math.random() * 0.04 });
-    }
-
-    this.MAX_ATTEMPTS = 5;
-    this.PASS_SCORE = 60;
-    this.TIMEOUT_SEC = 10;
-    this._completed = false;
-
-    // 带标签但「非激活」的摄像头占位（绝不调用 getUserMedia / 不请求摄像头权限）
-    this.cameraPlaceholderRect = { x: 40, y: 40, w: 150, h: 96 };
-    this.swipeDetected = false;
-
-    // 缩放参数
-    const imgW = 1448, imgH = 1086;
-    const sc = Math.max(this.DW / imgW, this.DH / imgH);
-    const cropIx = 910, cropIy = 772, cropIw = 510, cropIh = 118;
-    this.cropCx = cropIx * sc; this.cropCy = cropIy * sc + (this.DH - imgH * sc) / 2;
-    this.cropW = cropIw * sc; this.cropH = cropIh * sc;
-    this.zoomScale = Math.min(this.DW / this.cropW, this.DH / this.cropH) * 0.96;
-    this.targetCx = 1240 * sc; this.targetCy = 806 * sc + (this.DH - imgH * sc) / 2;
-
-    // 阶段
-    this.phase = 'sign'; // sign → zoom → writing
+    this.DW = 1280;
+    this.DH = 720;
+    this.phase = 'mirror';
     this.phaseTime = 0;
-    this.zoomT = 0;
-    this.zoomF = 0;
-    this.waitT = 0;
-    this.timeoutActive = false;
-    this.timeoutFired = false;
+    this._completed = false;
+    this.sampleTime = 0;
+    this.sampling = false;
+    this.wavePoints = [];
+    this.wavePointerId = null;
+    this.cameraRect = { x: 360, y: 590, width: 260, height: 54 };
+    this.waveRect = { x: 660, y: 590, width: 260, height: 54 };
+    this.detector = game.createSmileDetector?.() || new SmileDetector();
+    this.statusText = '镜中那个人，为什么也在看着我？';
   }
 
   get isComplete() { return this._completed; }
-  get completeTitle() { return '辨认成功'; }
-  get completeMessage() { return '——\n李向阳'; }
+  get completeTitle() { return '认出了自己'; }
+  get completeMessage() { return '他不是陌生人。那是我自己。'; }
 
   onEnter() {
     this.game.input.setHandlers({
-      down: p => this.handleDown(p),
-      move: p => this.handleMove(p),
-      up: p => this.handleUp(p),
+      down: point => this.handleDown(point),
+      move: point => this.handleMove(point),
+      up: point => this.handleUp(point),
       cancel: () => this.handleCancel(),
     });
-    this.phase = 'sign';
-    this.phaseTime = 0;
+    this._goto('mirror');
   }
 
   onExit() {
     this.game.input.setHandlers();
-    if (this.timeoutTimer) clearInterval(this.timeoutTimer);
+    this.detector.stop();
   }
 
   handleDown(point) {
-    // 弹层/按钮优先：超时、提示、完成、清除、提交
-    // 关键修复：writing 阶段点击必须先判按钮，否则"提交/清除"命中永远走不进 checkButtonClick，全员卡签字关
-    if (this.checkButtonClick(point)) return;
-
-    if (this.phase === 'writing' && !this.passed) {
-      this.wDown = true;
-      this.wPid = point.pointerId;
-      this.cur = [point];
+    if (this.phase === 'mirror') {
+      if (this._contains(this.cameraRect, point)) {
+        this._startCamera();
+      } else if (this._contains(this.waveRect, point)) {
+        this._goto('wave');
+      }
+      return;
+    }
+    if (this.phase === 'camera') {
+      if (this._contains(this.waveRect, point)) this._goto('wave');
+      return;
+    }
+    if (this.phase === 'wave') {
+      this.wavePointerId = point.pointerId;
+      this.wavePoints = [{ x: point.x, y: point.y }];
     }
   }
 
   handleMove(point) {
-    if (this.phase === 'writing' && this.wDown && point.pointerId === this.wPid) {
-      const last = this.cur[this.cur.length - 1];
-      if (Math.hypot(point.x - last.x, point.y - last.y) < 1.5) return;
-      this.cur.push(point);
+    if (this.phase !== 'wave' || point.pointerId !== this.wavePointerId) return;
+    const last = this.wavePoints[this.wavePoints.length - 1];
+    if (!last || Math.hypot(point.x - last.x, point.y - last.y) > 8) {
+      this.wavePoints.push({ x: point.x, y: point.y });
     }
   }
 
   handleUp(point) {
-    if (this.phase !== 'writing' || !this.wDown) return;
-    this.wDown = false;
-    this.wPid = null;
-    if (this.cur.length >= 4) {
-      const type = classifyStroke(this.cur);
-      const { deformed } = deformStroke(this.cur, type);
-      this.strokes.push({ raw: [...this.cur], deformed, type });
-      // (b) 滑动手势回退：单笔长划（横扫屏幕）即视为「我已签下」的兜底手势
-      let pathLen = 0;
-      for (let i = 1; i < this.cur.length; i++) {
-        pathLen += Math.hypot(this.cur[i].x - this.cur[i - 1].x, this.cur[i].y - this.cur[i - 1].y);
-      }
-      if (pathLen > 700) this.swipeDetected = true;
+    if (this.phase !== 'wave' || point.pointerId !== this.wavePointerId) return;
+    if (this._isWave(this.wavePoints)) this._goto('reveal');
+    else {
+      this.statusText = '从左到右挥一次手，让镜中的他跟着你。';
+      this.wavePoints = [];
     }
-    this.cur = [];
+    this.wavePointerId = null;
   }
 
   handleCancel() {
-    this.wDown = false;
-    this.wPid = null;
-    this.cur = [];
-  }
-
-  checkButtonClick(point) {
-    // "清除"按钮
-    const cw = 90, ch = 36, cx = this.DW - cw - 20 - 124, cy = this.DH - ch - 16;
-    if (point.x >= cx && point.x <= cx + cw && point.y >= cy && point.y <= cy + ch) {
-      this.strokes = [];
-      this.cur = [];
-      return true;
-    }
-    // "提交"按钮
-    const bw = 110, bh = 40, bx = this.DW - bw - 20, by = this.DH - bh - 16;
-    if (point.x >= bx && point.x <= bx + bw && point.y >= by && point.y <= by + bh) {
-      this.submit();
-      return true;
-    }
-    // 弹层按钮（超时/提示/完成）：任意点击即响应
-    if (this.timeoutFired) {
-      this.timeoutFired = false;
-      this.elapsed = 0;
-      this.totalDT = 0;
-      try { navigator.vibrate?.(10); } catch {}
-      return true;
-    }
-    if (this.showHint) {
-      this.showHint = false;
-      try { navigator.vibrate?.(10); } catch {}
-      return true;
-    }
-    if (this._completed) {
-      this.resetAll();
-      return true;
-    }
-    return false;
-  }
-
-  submit() {
-    if (this.passed || (this.strokes.length < 5 && !this.swipeDetected)) return;
-    if (this.matchSignature()) {
-      this.passed = true;
-      this._completed = true;
-      this.game.progress.markChapterComplete(8, 85);
-      try { navigator.vibrate?.(15); } catch {}
-      return;
-    }
-    this.attempts++;
-    if (this.attempts >= this.MAX_ATTEMPTS && !this.hintShown) {
-      this.hintShown = true;
-      this.showHint = true;
-    }
-  }
-
-  matchSignature() {
-    const all = this.strokes.map(s => s.raw);
-
-    // (b) 滑动手势回退：检测到长划手势直接通过
-    if (this.swipeDetected) return true;
-
-    if (all.length < 6) return false;
-    const zones = [[], []];
-    for (const pts of all) {
-      zones[Math.min(1, Math.floor((avg(pts.map(p => p.x)) / this.DW) * 2))].push(pts);
-    }
-    if (zones[0].length < 3 || zones[1].length < 3) return false;
-
-    // (a) 宽泛笔迹启发式：笔画数 + 双区覆盖面积，宽松判定即视为「向阳」两字
-    if (all.length >= 6 && zones[0].length >= 2 && zones[1].length >= 2) {
-      // 覆盖区域：左右两区都有足够笔迹 => 满足宽松通关
-      const bb0 = bbox(zones[0].flat());
-      const bb1 = bbox(zones[1].flat());
-      if (bb0.w >= 40 && bb0.h >= 30 && bb1.w >= 40 && bb1.h >= 30) return true;
-    }
-
-    let sc = 0;
-    let z0h = false, z0v = false, z0f = false;
-    for (const pts of zones[0]) {
-      const t = classifyStroke(pts);
-      if (t === 'horizontal') z0h = true;
-      if (t === 'vertical') z0v = true;
-      if (t === 'fold') z0f = true;
-    }
-    sc += Math.min(20, zones[0].length * 4);
-    if (z0h && z0v && z0f) sc += 18;
-    else if (z0h && z0v) sc += 12;
-
-    let z1h = false, z1v = false;
-    for (const pts of zones[1]) {
-      const t = classifyStroke(pts);
-      if (t === 'horizontal') z1h = true;
-      if (t === 'vertical') z1v = true;
-    }
-    sc += Math.min(20, zones[1].length * 4);
-    if (z1h && z1v) sc += 18;
-    else if (z1h || z1v) sc += 8;
-    if (z0h && z0v && z1h && z1v) sc += 10;
-    sc += Math.min(8, Math.max(0, all.length - 6));
-    return sc >= this.PASS_SCORE;
-  }
-
-  resetAll() {
-    this.strokes = [];
-    this.cur = [];
-    this.attempts = 0;
-    this.passed = false;
-    this.hintShown = false;
-    this.elapsed = 0;
-    this.totalDT = 0;
-    this.timeoutActive = false;
-    this.timeoutFired = false;
-    this.showHint = false;
-    this.swipeDetected = false;
-    this._completed = false;
-    this.phase = 'sign';
-    this.phaseTime = 0;
-    this.zoomT = 0;
-    this.zoomF = 0;
-    this.waitT = 0;
+    this.wavePoints = [];
+    this.wavePointerId = null;
   }
 
   update(dt) {
-    this.totalDT += dt;
-
-    // phase transitions
-    if (this.phase === 'sign') {
-      this.phaseTime += dt;
-      if (this.phaseTime >= 2.5) {
-        this.phase = 'zoom';
-        this.phaseTime = 0;
+    this.phaseTime += dt;
+    if (this.phase !== 'camera') {
+      if (this.phase === 'reveal' && this.phaseTime >= 1.4 && !this._completed) {
+        this._completed = true;
+        this._goto('complete');
+        this.game.progress.markChapterComplete(8, 72);
       }
-    } else if (this.phase === 'zoom') {
-      this.phaseTime += dt;
-      const DUR = 1.6;
-      const raw = Math.min(1, this.phaseTime / DUR);
-      this.zoomT = raw < 0.5 ? 4 * raw * raw * raw : 1 - Math.pow(-2 * raw + 2, 3) / 2;
-      this.zoomF = raw > 0.6 ? Math.min(1, 1 - Math.pow(1 - (raw - 0.6) / 0.4, 2)) : 0;
-      if (raw >= 1) {
-        this.phase = 'writing';
-        this.elapsed = 0;
-        this.timeoutActive = true;
-        this.timeoutFired = false;
-      }
-    } else if (this.phase === 'writing' && this.timeoutActive && !this.passed) {
-      this.totalDT += dt;
-      // 用 totalDT 的方式计时（简化：每10次 update 约1秒）
-      // 改用 dt 累加
-      const prevElapsed = this.elapsed;
-      this.elapsed += dt;
-      const newSec = Math.floor(this.elapsed);
-      const prevSec = Math.floor(prevElapsed);
-      if (this.elapsed >= this.TIMEOUT_SEC && !this.timeoutFired) {
-        this.timeoutFired = true;
-      }
+      return;
     }
+
+    this.sampleTime += dt;
+    if (!this.sampling && this.sampleTime >= 0.2) {
+      this.sampleTime = 0;
+      this.sampling = true;
+      this.detector.sample().then(result => {
+        if (this.phase !== 'camera') return;
+        if (result.state === 'smiling') this._goto('reveal');
+        else if (result.state === 'failed') this._goto('wave');
+        else this.statusText = `保持微笑… ${Math.min(100, Math.round(result.happy * 100))}%`;
+      }).finally(() => { this.sampling = false; });
+    }
+    if (this.phaseTime >= 8) this._goto('wave');
   }
 
   render(ctx) {
-    ctx.clearRect(0, 0, this.DW, this.DH);
+    this._drawBackground(ctx);
+    this._drawMirror(ctx);
+    if (this.phase === 'mirror') this._drawChoice(ctx);
+    if (this.phase === 'camera') this._drawCamera(ctx);
+    if (this.phase === 'wave') this._drawWave(ctx);
+    if (this.phase === 'reveal') this._drawReveal(ctx);
+  }
 
-    if (this.phase === 'sign') {
-      this.renderSign(ctx);
-    } else if (this.phase === 'zoom') {
-      this.renderZoom(ctx);
+  _goto(phase) {
+    if (this.phase === 'camera' && phase !== 'camera') this.detector.stop();
+    this.phase = phase;
+    this.phaseTime = 0;
+    this.sampleTime = 0;
+    if (phase === 'mirror') this.statusText = '镜中那个人，为什么也在看着我？';
+    if (phase === 'wave') this.statusText = '从左到右挥一次手，让镜中的他跟着你。';
+    if (phase === 'reveal') this.statusText = '他……在学我？不对，这好像是我自己。';
+  }
+
+  async _startCamera() {
+    this.statusText = '正在打开前置摄像头…';
+    const started = await this.detector.start();
+    if (started) {
+      this._goto('camera');
+      this.statusText = '看着镜头，保持微笑 1.5 秒。';
     } else {
-      this.renderPaper(ctx);
-      this.renderWriting(ctx);
-
-      // 按钮
-      this.drawButton(ctx, this.DW - 90 - 20 - 124, this.DH - 36 - 16, 90, 36, '清除', '#b89a72');
-      this.drawButton(ctx, this.DW - 110 - 20, this.DH - 40 - 16, 110, 40, '提 交', '#f5e6c8', '#4d3420');
+      this._goto('wave');
     }
-
-    // 弹层
-    if (this.timeoutFired) this.renderOverlay(ctx, '时间过了许久', '连笔写——手记得的，疾病夺不走', '再试试');
-    if (this.showHint) this.renderOverlay(ctx, '笔迹畸变规则', '横↔竖、撇↔捺，试试连笔写', '明白了');
-    // 完成弹层由 ChapterManager 统一处理
   }
 
-  // 带标签的「非激活」摄像头占位：仅绘制 UI，绝不调用 getUserMedia / 不请求摄像头权限
-  drawCameraPlaceholder(ctx) {
-    const { x, y, w, h } = this.cameraPlaceholderRect;
-    ctx.save();
-    // 外框（暗色，表示未启用）
-    roundedRect(ctx, x, y, w, h, 10);
-    ctx.fillStyle = 'rgba(20, 24, 30, 0.55)';
-    ctx.fill();
-    ctx.lineWidth = 2;
-    ctx.strokeStyle = 'rgba(150, 160, 170, 0.5)';
-    ctx.stroke();
-
-    // 镜头（带斜杠，表示禁用）
-    const cx = x + w / 2, cy = y + h / 2 - 6;
-    const r = 22;
-    ctx.beginPath();
-    ctx.arc(cx, cy, r, 0, Math.PI * 2);
-    ctx.strokeStyle = 'rgba(170, 180, 190, 0.7)';
-    ctx.lineWidth = 3;
-    ctx.stroke();
-    ctx.beginPath();
-    ctx.moveTo(cx - r * 0.7, cy - r * 0.7);
-    ctx.lineTo(cx + r * 0.7, cy + r * 0.7);
-    ctx.stroke();
-
-    // 标签
-    ctx.fillStyle = 'rgba(200, 210, 220, 0.9)';
-    ctx.font = '14px system-ui, "PingFang SC", sans-serif';
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.fillText('摄像头（未启用）', cx, y + h - 14);
-    ctx.restore();
-  }
-
-  renderSign(ctx) {
-    // 优先使用走廊场景底图作为背景
-    const bg = this.game.images.ch8_corridor;
-    if (bg) {
-      const iw = 1280, ih = 720;
-      const sc = Math.max(this.DW / (bg.width || iw), this.DH / (bg.height || ih));
-      const ox = (this.DW - (bg.width || iw) * sc) / 2;
-      const oy = (this.DH - (bg.height || ih) * sc) / 2;
-      ctx.drawImage(bg, ox, oy, (bg.width || iw) * sc, (bg.height || ih) * sc);
-      // 暗色遮罩保证表单可读
-      ctx.fillStyle = 'rgba(10, 6, 4, 0.45)';
+  _drawBackground(ctx) {
+    const corridor = this.game.images.ch8_corridor;
+    if (corridor) ctx.drawImage(corridor, 0, 0, this.DW, this.DH);
+    else {
+      const gradient = ctx.createLinearGradient(0, 0, this.DW, this.DH);
+      gradient.addColorStop(0, '#273241');
+      gradient.addColorStop(1, '#11151e');
+      ctx.fillStyle = gradient;
       ctx.fillRect(0, 0, this.DW, this.DH);
     }
-    const smile = this.game.images.ch8_mirror_smile;
-    if (smile) {
-      ctx.save();
-      ctx.globalAlpha = 0.42;
-      ctx.drawImage(smile, this.DW * 0.72, this.DH * 0.12, 150, 200);
-      ctx.restore();
-    }
-
-    // 带标签但「非激活」的摄像头占位（绝不请求摄像头权限）
-    this.drawCameraPlaceholder(ctx);
-
-    const img = this.game.images.sign;
-    if (!img) return;
-    const iw = 1448, ih = 1086;
-    const sc = Math.max(this.DW / iw, this.DH / ih);
-    const ox = (this.DW - iw * sc) / 2, oy = (this.DH - ih * sc) / 2;
-    ctx.drawImage(img, ox, oy, iw * sc, ih * sc);
-  }
-
-  renderZoom(ctx) {
-    const img = this.game.images.sign;
-    if (!img) return;
-    const iw = 1448, ih = 1086;
-    const sc = Math.max(this.DW / iw, this.DH / ih);
-    const t = this.zoomT;
-    const s = 1 + (this.zoomScale - 1) * t;
-    const camX = this.DW / 2 + (this.targetCx - this.DW / 2) * t;
-    const camY = this.DH / 2 + (this.targetCy - this.DH / 2) * t;
-    let tx = this.DW / 2 - camX * s, ty = this.DH / 2 - camY * s;
-
-    ctx.save();
-    ctx.translate(tx, ty);
-    ctx.scale(s, s);
-    const ox = (this.DW - iw * sc) / 2, oy = (this.DH - ih * sc) / 2;
-    ctx.drawImage(img, ox, oy, iw * sc, ih * sc);
-    ctx.restore();
-  }
-
-  renderPaper(ctx) {
-    // 优先使用真实纸张纹理底图
-    const paper = this.game.images.paperBase;
-    const noise = this.game.images.paperNoise;
-    if (paper) {
-      ctx.drawImage(paper, 0, 0, this.DW, this.DH);
-    } else {
-      const g = ctx.createLinearGradient(0, 0, this.DW * 0.4, this.DH);
-      g.addColorStop(0, '#fcf5e6'); g.addColorStop(0.4, '#f7ecd0');
-      g.addColorStop(0.7, '#f2e2bc'); g.addColorStop(1, '#e8d4a0');
-      ctx.fillStyle = g;
-      ctx.fillRect(0, 0, this.DW, this.DH);
-    }
-    // 纸张噪点叠加
-    if (noise) {
-      ctx.save();
-      ctx.globalAlpha = 0.08;
-      ctx.drawImage(noise, 0, 0, this.DW, this.DH);
-      ctx.restore();
-    }
-
-    for (const d of this.texture) {
-      ctx.fillStyle = `rgba(139,105,20,${d.a})`;
-      ctx.beginPath(); ctx.arc(d.x, d.y, d.r, 0, Math.PI * 2); ctx.fill();
-    }
-  }
-
-  renderWriting(ctx) {
-    for (const s of this.strokes) this.drawInk(ctx, s.deformed, false);
-    if (this.cur.length >= 2) this.drawInk(ctx, this.cur, true);
-  }
-
-  drawInk(ctx, pts, ghost) {
-    if (pts.length < 2) return;
-    ctx.save();
-    ctx.lineCap = 'round'; ctx.lineJoin = 'round';
-    ctx.beginPath(); ctx.moveTo(pts[0].x, pts[0].y);
-    if (pts.length === 2) {
-      ctx.lineTo(pts[1].x, pts[1].y);
-    } else {
-      for (let i = 1; i < pts.length - 1; i++) {
-        const mid = { x: (pts[i].x + pts[i + 1].x) / 2, y: (pts[i].y + pts[i + 1].y) / 2 };
-        ctx.quadraticCurveTo(pts[i].x, pts[i].y, mid.x, mid.y);
-      }
-      ctx.lineTo(pts[pts.length - 1].x, pts[pts.length - 1].y);
-    }
-    ctx.strokeStyle = ghost ? 'rgba(30,16,8,0.18)' : '#1a0e06';
-    ctx.lineWidth = ghost ? 2 : 2.6;
-    ctx.stroke();
-    ctx.restore();
-  }
-
-  drawButton(ctx, x, y, w, h, text, bgColor, textColor) {
-    ctx.save();
-    const r = 8;
-    ctx.beginPath();
-    ctx.moveTo(x + r, y);
-    ctx.lineTo(x + w - r, y);
-    ctx.quadraticCurveTo(x + w, y, x + w, y + r);
-    ctx.lineTo(x + w, y + h - r);
-    ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
-    ctx.lineTo(x + r, y + h);
-    ctx.quadraticCurveTo(x, y + h, x, y + h - r);
-    ctx.lineTo(x, y + r);
-    ctx.quadraticCurveTo(x, y, x + r, y);
-    ctx.closePath();
-    ctx.fillStyle = bgColor;
-    ctx.fill();
-    ctx.fillStyle = textColor || '#1f1409';
-    ctx.font = '600 16px "PingFang SC", system-ui, sans-serif';
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.fillText(text, x + w / 2, y + h / 2);
-    ctx.restore();
-  }
-
-  renderOverlay(ctx, title, message, btnText, isPass) {
-    ctx.save();
-    ctx.fillStyle = 'rgba(0, 0, 0, 0.6)';
+    ctx.fillStyle = 'rgba(6, 10, 18, 0.36)';
     ctx.fillRect(0, 0, this.DW, this.DH);
+  }
 
-    const cardW = 380, cardH = 280;
-    const cx = (this.DW - cardW) / 2, cy = (this.DH - cardH) / 2;
+  _drawMirror(ctx) {
+    const mirror = this.game.images.ch8_mirror_wall;
+    if (mirror) ctx.drawImage(mirror, 370, 42, 540, 520);
+    else {
+      ctx.fillStyle = '#6a7280';
+      ctx.fillRect(400, 62, 480, 480);
+      ctx.fillStyle = '#1a202d';
+      ctx.fillRect(424, 86, 432, 432);
+    }
 
-    ctx.beginPath();
-    const r = 16;
-    ctx.moveTo(cx + r, cy);
-    ctx.lineTo(cx + cardW - r, cy);
-    ctx.quadraticCurveTo(cx + cardW, cy, cx + cardW, cy + r);
-    ctx.lineTo(cx + cardW, cy + cardH - r);
-    ctx.quadraticCurveTo(cx + cardW, cy + cardH, cx + cardW - r, cy + cardH);
-    ctx.lineTo(cx + r, cy + cardH);
-    ctx.quadraticCurveTo(cx, cy + cardH, cx, cy + cardH - r);
-    ctx.lineTo(cx, cy + r);
-    ctx.quadraticCurveTo(cx, cy, cx + r, cy);
-    ctx.closePath();
+    const reveal = this.phase === 'reveal' ? Math.min(1, this.phaseTime / 1.2) : 0;
+    const stranger = this.game.images.ch8_mirror_stranger;
+    const smile = this.game.images.ch8_mirror_smile;
+    const portrait = this.phase === 'camera' && this.detector.video?.readyState >= 2 ? null : stranger;
+    if (portrait) {
+      ctx.save();
+      ctx.globalAlpha = 1 - reveal;
+      ctx.drawImage(portrait, 500, 115, 280, 360);
+      ctx.restore();
+    }
+    if (smile && reveal > 0) {
+      ctx.save();
+      ctx.globalAlpha = reveal;
+      ctx.drawImage(smile, 500, 115, 280, 360);
+      ctx.restore();
+    }
 
-    const grad = ctx.createLinearGradient(cx, cy, cx, cy + cardH);
-    grad.addColorStop(0, '#fcf5e6');
-    grad.addColorStop(1, '#f0deb4');
-    ctx.fillStyle = grad;
+    const crack = this.game.images.ch8_crack;
+    if (crack) {
+      ctx.save();
+      ctx.globalAlpha = 0.82 * (1 - reveal);
+      ctx.drawImage(crack, 470, 92, 340, 420);
+      ctx.restore();
+    }
+  }
+
+  _drawChoice(ctx) {
+    this._drawText(ctx, this.statusText, 640, 580, 24, '#f2e6d5');
+    this._drawButton(ctx, this.cameraRect, '开启前置摄像头', '#d9b374', '#2b1d12');
+    this._drawButton(ctx, this.waveRect, '不用摄像头，挥手', '#304156', '#edf3fa');
+  }
+
+  _drawCamera(ctx) {
+    const video = this.detector.video;
+    if (video?.readyState >= 2) {
+      ctx.save();
+      ctx.translate(640, 295);
+      ctx.scale(-1, 1);
+      ctx.drawImage(video, -140, -180, 280, 360);
+      ctx.restore();
+    }
+    this._drawText(ctx, this.statusText, 640, 580, 22, '#f2e6d5');
+    this._drawButton(ctx, this.waveRect, '改用挥手通关', '#304156', '#edf3fa');
+  }
+
+  _drawWave(ctx) {
+    this._drawText(ctx, this.statusText, 640, 580, 23, '#f2e6d5');
+    if (this.wavePoints.length > 1) {
+      ctx.save();
+      ctx.strokeStyle = '#e9c77f';
+      ctx.lineWidth = 5;
+      ctx.lineCap = 'round';
+      ctx.beginPath();
+      ctx.moveTo(this.wavePoints[0].x, this.wavePoints[0].y);
+      for (let index = 1; index < this.wavePoints.length; index += 1) ctx.lineTo(this.wavePoints[index].x, this.wavePoints[index].y);
+      ctx.stroke();
+      ctx.restore();
+    }
+  }
+
+  _drawReveal(ctx) {
+    const light = Math.min(1, this.phaseTime / 1.2);
+    const glow = ctx.createRadialGradient(640, 295, 20, 640, 295, 450);
+    glow.addColorStop(0, `rgba(252, 214, 135, ${0.22 * light})`);
+    glow.addColorStop(1, 'rgba(252, 214, 135, 0)');
+    ctx.fillStyle = glow;
+    ctx.fillRect(0, 0, this.DW, this.DH);
+    this._drawText(ctx, this.statusText, 640, 580, 24, '#fff4d8');
+  }
+
+  _drawButton(ctx, rect, label, background, color) {
+    ctx.save();
+    this._roundedRect(ctx, rect.x, rect.y, rect.width, rect.height, 12);
+    ctx.fillStyle = background;
     ctx.fill();
-
-    ctx.fillStyle = isPass ? '#2d6e2d' : '#2a1a0c';
-    ctx.font = isPass ? 'bold 24px "PingFang SC", system-ui, sans-serif' : 'bold 22px "PingFang SC", system-ui, sans-serif';
+    ctx.fillStyle = color;
+    ctx.font = '600 18px "PingFang SC", system-ui, sans-serif';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    ctx.fillText(title, this.DW / 2, cy + 55);
-
-    ctx.fillStyle = '#4d3420';
-    ctx.font = '17px "PingFang SC", system-ui, sans-serif';
-    const lines = message.split('\n');
-    lines.forEach((line, i) => {
-      ctx.fillText(line, this.DW / 2, cy + 110 + i * 28);
-    });
-
-    // 按钮
-    const btnW = 180, btnH = 44, bx = (this.DW - btnW) / 2, by = cy + cardH - 50 - btnH / 2;
-    ctx.beginPath();
-    const br = 8;
-    ctx.moveTo(bx + br, by - btnH / 2);
-    ctx.lineTo(bx + btnW - br, by - btnH / 2);
-    ctx.quadraticCurveTo(bx + btnW, by - btnH / 2, bx + btnW, by - btnH / 2 + br);
-    ctx.lineTo(bx + btnW, by + btnH / 2 - br);
-    ctx.quadraticCurveTo(bx + btnW, by + btnH / 2, bx + btnW - br, by + btnH / 2);
-    ctx.lineTo(bx + br, by + btnH / 2);
-    ctx.quadraticCurveTo(bx, by + btnH / 2, bx, by + btnH / 2 - br);
-    ctx.lineTo(bx, by - btnH / 2 + br);
-    ctx.quadraticCurveTo(bx, by - btnH / 2, bx + br, by - btnH / 2);
-    ctx.closePath();
-    ctx.fillStyle = '#4d3420';
-    ctx.fill();
-    ctx.fillStyle = '#fcf5e6';
-    ctx.font = '600 16px "PingFang SC", system-ui, sans-serif';
-    ctx.fillText(btnText, bx + btnW / 2, by);
-
+    ctx.fillText(label, rect.x + rect.width / 2, rect.y + rect.height / 2);
     ctx.restore();
+  }
+
+  _drawText(ctx, text, x, y, size, color) {
+    ctx.save();
+    ctx.fillStyle = 'rgba(4, 8, 14, 0.52)';
+    this._roundedRect(ctx, 250, y - size, 780, size + 24, 18);
+    ctx.fill();
+    ctx.fillStyle = color;
+    ctx.font = `500 ${size}px "PingFang SC", system-ui, sans-serif`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(text, x, y);
+    ctx.restore();
+  }
+
+  _isWave(points) {
+    if (points.length < 3) return false;
+    const xs = points.map(point => point.x);
+    const ys = points.map(point => point.y);
+    return Math.max(...xs) - Math.min(...xs) >= this.DW * 0.35 && Math.max(...ys) - Math.min(...ys) >= 50;
+  }
+
+  _contains(rect, point) {
+    return point.x >= rect.x && point.x <= rect.x + rect.width && point.y >= rect.y && point.y <= rect.y + rect.height;
+  }
+
+  _roundedRect(ctx, x, y, width, height, radius) {
+    ctx.beginPath();
+    ctx.moveTo(x + radius, y);
+    ctx.lineTo(x + width - radius, y);
+    ctx.quadraticCurveTo(x + width, y, x + width, y + radius);
+    ctx.lineTo(x + width, y + height - radius);
+    ctx.quadraticCurveTo(x + width, y + height, x + width - radius, y + height);
+    ctx.lineTo(x + radius, y + height);
+    ctx.quadraticCurveTo(x, y + height, x, y + height - radius);
+    ctx.lineTo(x, y + radius);
+    ctx.quadraticCurveTo(x, y, x + radius, y);
+    ctx.closePath();
   }
 }

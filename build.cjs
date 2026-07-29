@@ -5,6 +5,8 @@ const SRC_DIR = path.join(__dirname, 'src');
 const OUT_DIR = path.join(__dirname, 'build_out');
 const IMAGE_SRC_DIR = path.join(__dirname, 'assets', 'images');
 const IMAGE_OUT_DIR = path.join(OUT_DIR, 'assets', 'images');
+const VENDOR_SRC_DIR = path.join(__dirname, 'assets', 'vendor');
+const VENDOR_OUT_DIR = path.join(OUT_DIR, 'assets', 'vendor');
 
 // 拼接顺序：确保依赖在前
 const files = [
@@ -21,6 +23,11 @@ const files = [
   'src/utils/returnNightLayout.js',
   'src/utils/tableLayout.js',
   'src/ui/ArchiveUI.js',
+  'src/ui/ArtworkMemoryReport.js',
+  // chapter interactions
+  'src/interactions/SignaturePuzzle.js',
+  'src/interactions/DanmakuBubbleField.js',
+  'src/interactions/SmileDetector.js',
   // chapter layouts
   'src/chapters/ch03_mazeLayout.js',
   // chapters (按章节顺序 01→10)
@@ -114,6 +121,7 @@ const html = `<!DOCTYPE html>
     <div class="hint" id="loadHint">正在准备记忆碎片...</div>
   </div>
   <canvas id="gameCanvas" aria-label="昨日重现"></canvas>
+  <script src="./assets/vendor/face-api/face-api.min.js"></script>
   <script>
 ${combined}
   </script>
@@ -123,4 +131,5 @@ ${combined}
 fs.mkdirSync(OUT_DIR, { recursive: true });
 fs.writeFileSync(path.join(OUT_DIR, 'index.html'), html, 'utf8');
 fs.cpSync(IMAGE_SRC_DIR, IMAGE_OUT_DIR, { recursive: true, force: true });
+if (fs.existsSync(VENDOR_SRC_DIR)) fs.cpSync(VENDOR_SRC_DIR, VENDOR_OUT_DIR, { recursive: true, force: true });
 console.log(`Built: ${path.join(OUT_DIR, 'index.html')} (${Buffer.byteLength(html, 'utf8')} bytes)`);

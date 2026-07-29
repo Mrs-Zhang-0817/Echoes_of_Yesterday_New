@@ -2,6 +2,7 @@
 // 状态机：nightNarrative → socialLights → flashlightSearch → hallucinationClear → doorOpen → complete
 
 import { drawPrompt, roundedRect } from '../utils/sceneUtils.js';
+import { DanmakuBubbleField } from '../interactions/DanmakuBubbleField.js';
 
 function vibe(ms) {
   try { navigator.vibrate(ms); } catch (e) { /* 不支持振动 */ }
@@ -47,21 +48,11 @@ export class Chapter07 {
       '需要找到那个熟悉的东西……',
     ];
 
-    // 社交气泡（朋友圈 / 灯光气泡飘动）—— socialLights 阶段绘制
-    this.socialBubbles = [];
-    const bubbleLabels = ['👍', '💬', '🏠', '🌟', '☀️', '🌙', '📷', '✨', '🔔', '❤️'];
-    for (let i = 0; i < 12; i++) {
-      this.socialBubbles.push({
-        x: 120 + Math.random() * 1040,
-        y: 740 + Math.random() * 200,
-        r: 14 + Math.random() * 20,
-        vy: 22 + Math.random() * 30,
-        sway: Math.random() * Math.PI * 2,
-        swaySpeed: 0.6 + Math.random() * 1.2,
-        hue: 20 + Math.random() * 40, // 暖色灯光
-        label: bubbleLabels[i % bubbleLabels.length],
-      });
-    }
+    this.socialBubbleField = new DanmakuBubbleField({
+      targetX: 640,
+      targetY: 510,
+      messages: ['你不是一个人。', '有人在等你回家。', '慢慢来，不着急。', '微光就在前方。', '深呼吸，放轻松。'],
+    });
 
     // 完成动画参数
     this.openProgress = 0;
@@ -85,6 +76,7 @@ export class Chapter07 {
 
   onExit() {
     this.game.input.setHandlers();
+    this.socialBubbleField.stop();
   }
 
   // ============ 输入处理 ============
@@ -97,8 +89,10 @@ export class Chapter07 {
           return;
 
         case 'socialLights':
-          // 任意点击/触摸直接推进到手电搜索
-          this._goto('flashlightSearch');
+          if (this.socialBubbleField.hit(point)) {
+            vibe(12);
+            if (this.socialBubbleField.isReady) this._goto('flashlightSearch');
+          }
           return;
 
         case 'flashlightSearch': {
@@ -150,6 +144,7 @@ export class Chapter07 {
   _goto(phase) {
     this.phase = phase;
     this.phaseTime = 0;
+    if (phase === 'socialLights') this.socialBubbleField.start();
   }
 
   // ============ 辅助方法 ============
@@ -178,13 +173,8 @@ export class Chapter07 {
         break;
 
       case 'socialLights':
-        // 朋友圈 / 灯光气泡飘动推进
-        for (const b of this.socialBubbles) {
-          b.y -= b.vy * dt;
-          b.sway += b.swaySpeed * dt;
-          if (b.y < -40) { b.y = 760; b.x = 120 + Math.random() * 1040; }
-        }
-        if (this.phaseTime >= 6) this._goto('flashlightSearch');
+        this.socialBubbleField.update(dt);
+        if (this.socialBubbleField.isReady || this.phaseTime >= 20) this._goto('flashlightSearch');
         break;
 
       case 'flashlightSearch':
@@ -306,34 +296,9 @@ export class Chapter07 {
     if (bedroom) { ctx.drawImage(bedroom, 0, 0, width, height); ctx.fillStyle = 'rgba(3, 4, 8, 0.86)'; ctx.fillRect(0, 0, width, height); }
     else { ctx.fillStyle = '#0a0806'; ctx.fillRect(0, 0, width, height); }
 
-    ctx.save();
-    for (const b of this.socialBubbles) {
-      const sx = b.x + Math.sin(b.sway) * 18;
-      const alpha = 0.5 + 0.5 * Math.sin(b.sway * 0.8);
-      // 柔和灯光光晕
-      const glow = ctx.createRadialGradient(sx, b.y, 0, sx, b.y, b.r * 2.2);
-      glow.addColorStop(0, `hsla(${b.hue}, 80%, 70%, ${0.30 * alpha})`);
-      glow.addColorStop(1, `hsla(${b.hue}, 80%, 70%, 0)`);
-      ctx.fillStyle = glow;
-      ctx.beginPath();
-      ctx.arc(sx, b.y, b.r * 2.2, 0, Math.PI * 2);
-      ctx.fill();
-      // 气泡主体
-      ctx.fillStyle = `hsla(${b.hue}, 70%, 88%, ${0.85 * alpha})`;
-      ctx.beginPath();
-      ctx.arc(sx, b.y, b.r, 0, Math.PI * 2);
-      ctx.fill();
-      // 气泡上的小图标（emoji 代表朋友圈互动）
-      ctx.fillStyle = `rgba(40, 24, 12, ${0.9 * alpha})`;
-      ctx.font = `${Math.round(b.r * 1.1)}px system-ui, "PingFang SC", sans-serif`;
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'middle';
-      ctx.fillText(b.label, sx, b.y);
-    }
-    ctx.restore();
+    this.socialBubbleField.render(ctx);
 
-    // 阶段提示（单行，不堆砌）
-    drawPrompt(ctx, '白天的信息还亮着，却照不进这间屋子', width / 2, height - 50, 0);
+    drawPrompt(ctx, `点亮 ${this.socialBubbleField.collected}/4 份牵挂`, width / 2, height - 50, 0);
   }
 
   // ---------- 搜索阶段（手电筒） ----------

@@ -1,12 +1,20 @@
 import { drawImageCover, drawPrompt, roundedRect } from '../utils/sceneUtils.js';
+import { SignaturePuzzle } from '../interactions/SignaturePuzzle.js';
 
 export class Chapter04 {
   constructor(game) {
     this.game = game;
-    this.phase = 'phone';          // phone → ringing → form → bracelet → complete
+    this.phase = 'phone';          // phone → ringing → signature → form → bracelet → complete
     this.phaseTime = 0;
     this.totalTime = 0;
     this._completed = false;
+    this.signature = new SignaturePuzzle({
+      game,
+      onComplete: () => {
+        this.phase = 'form';
+        this.phaseTime = 0;
+      },
+    });
   }
 
   get isComplete() { return this._completed; }
@@ -16,9 +24,9 @@ export class Chapter04 {
   onEnter() {
     this.game.input.setHandlers({
       down: point => this.handleDown(point),
-      move: () => {},
-      up: () => {},
-      cancel: () => {},
+      move: point => this.handleMove(point),
+      up: point => this.handleUp(point),
+      cancel: () => this.handleCancel(),
     });
   }
 
@@ -29,7 +37,9 @@ export class Chapter04 {
   // ============ 输入处理 ============
 
   handleDown(point) {
-    if (this.phase === 'phone') {
+    if (this.phase === 'signature') {
+      this.signature.handleDown(point);
+    } else if (this.phase === 'phone') {
       // 电话热区：底座 + 听筒区域
       const phoneBaseX = 200, phoneBaseY = 310, phoneBaseW = 100, phoneBaseH = 70;
       const phoneEarpieceX = 190, phoneEarpieceY = 278, phoneEarpieceW = 120, phoneEarpieceH = 28;
@@ -56,6 +66,18 @@ export class Chapter04 {
     }
   }
 
+  handleMove(point) {
+    if (this.phase === 'signature') this.signature.handleMove(point);
+  }
+
+  handleUp(point) {
+    if (this.phase === 'signature') this.signature.handleUp(point);
+  }
+
+  handleCancel() {
+    if (this.phase === 'signature') this.signature.handleCancel();
+  }
+
   // ============ update ============
 
   update(dt) {
@@ -67,9 +89,11 @@ export class Chapter04 {
       // 每次脉冲 0.3s 间隔，共 3 次，再加一点缓冲
       const pulseCount = Math.min(3, Math.floor(this.phaseTime / 0.3));
       if (pulseCount >= 3 && this.phaseTime - 3 * 0.3 > 0.15) {
-        this.phase = 'form';
+        this.phase = 'signature';
         this.phaseTime = 0;
       }
+    } else if (this.phase === 'signature') {
+      this.signature.update(dt);
     } else if (this.phase === 'bracelet') {
       if (this.phaseTime >= 2 && !this._completed) {
         this._completed = true;
@@ -91,6 +115,9 @@ export class Chapter04 {
       case 'ringing':
         this.drawPhone(ctx);
         this.drawPhonePrompt(ctx);
+        break;
+      case 'signature':
+        this.signature.render(ctx);
         break;
       case 'form':
         this.drawFormCard(ctx);

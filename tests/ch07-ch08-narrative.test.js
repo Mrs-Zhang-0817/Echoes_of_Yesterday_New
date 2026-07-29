@@ -16,22 +16,17 @@ const ch8Path = join(root, 'src/chapters/ch08_sign.js');
 const ch7Source = readFileSync(ch7Path, 'utf8');
 const ch8Source = readFileSync(ch8Path, 'utf8');
 
-// 从源文本提取 PASS_SCORE 常量数值
-function extractPassScore(src) {
-  const m = src.match(/PASS_SCORE\s*=\s*(\d+)/);
-  if (!m) throw new Error('源中未找到 PASS_SCORE 常量');
-  return Number(m[1]);
-}
-
 test('Ch7 状态机包含 socialLights 阶段（社交气泡叙事）', () => {
   assert.match(ch7Source, /socialLights/);
 });
 
-test('Ch8 场景包含「带标签但非激活」的摄像头占位', () => {
-  assert.match(ch8Source, /cameraPlaceholder/);
+test('Ch8 显式接入前置摄像头微笑识别，并提供挥手回退', () => {
+  assert.match(ch8Source, /SmileDetector/);
+  assert.match(ch8Source, /开启前置摄像头/);
+  assert.match(ch8Source, /不用摄像头，挥手/);
 });
 
-test('Ch8 签名通关阈值已下调到 <= 60（解决软卡关）', () => {
-  const score = extractPassScore(ch8Source);
-  assert.ok(score <= 60, `PASS_SCORE 应为 <= 60，实际为 ${score}`);
+test('Ch8 以连续微笑或一次宽幅挥手完成镜面揭示', () => {
+  assert.match(ch8Source, /保持微笑 1\.5 秒/);
+  assert.match(ch8Source, /this\.DW \* 0\.35/);
 });
