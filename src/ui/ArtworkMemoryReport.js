@@ -7,7 +7,7 @@ import CHAPTERS from '../data/chapters.json' with { type: 'json' };
 const _sorted = [...CHAPTERS].sort((a, b) => a.order - b.order);
 export const REPORT_PROGRESS = [0, ..._sorted.map(ch => ch.memoryUnlock)];
 
-const ASSET_BASE = './assets/images/report/';
+const ASSET_BASE = './assets/art/report/';
 const BUTTON_URL = `${ASSET_BASE}button_continue.jpg`;
 
 // 按 URL 缓存 Image，避免重复网络请求 / 重复解码
