@@ -192,15 +192,28 @@
   }
 
   // ============================================================
-  //  时间胶囊（医学知识页）
+  //  记忆档案（章节报告 + 医学知识页）
   // ============================================================
   var currentMedicalPage = 1;
 
   function showTimeCapsule() {
     var progress = getProgress();
     var completed = progress && progress.completed ? progress.completed : [];
+    var view = 'memory';
 
-    var overlay = createOverlay('时间胶囊', true);
+    var overlay = createOverlay('记忆档案', true);
+
+    // 档案和医学说明使用同一套纸页、解锁与翻页交互，避免把素材藏在不可达的独立页面。
+    var tabBar = document.createElement('div');
+    tabBar.style.cssText = 'display:flex;gap:8px;margin:0 0 14px;';
+    var memoryTab = document.createElement('button');
+    var medicalTab = document.createElement('button');
+    memoryTab.textContent = '记忆档案';
+    medicalTab.textContent = '医学档案';
+    memoryTab.style.cssText = BTN_NAV_STYLE;
+    medicalTab.style.cssText = BTN_NAV_STYLE;
+    tabBar.appendChild(memoryTab);
+    tabBar.appendChild(medicalTab);
 
     // 导航栏
     var navBar = document.createElement('div');
@@ -270,6 +283,7 @@
     var descEl = document.createElement('p');
     descEl.style.cssText = 'text-align:center;font-size:13px;color:#8a7a68;margin:0 0 6px;';
 
+    overlay.content.appendChild(tabBar);
     overlay.content.appendChild(navBar);
     overlay.content.appendChild(imgWrap);
     overlay.content.appendChild(descEl);
@@ -286,10 +300,14 @@
 
       if (unlocked) {
         var chStr = String(ch.order).padStart(2, '0');
-        img.src = 'assets/pictures/medical/medical_ch' + chStr + '.jpg';
+        img.src = view === 'memory'
+          ? 'assets/images/report/ch' + chStr + '.jpg'
+          : 'assets/pictures/medical/medical_ch' + chStr + '.jpg';
         img.style.display = 'block';
         lockOverlay.style.display = 'none';
-        descEl.textContent = '医学知识卡片 #' + ch.order;
+        descEl.textContent = view === 'memory'
+          ? '第 ' + ch.order + ' 章 · 记忆恢复档案'
+          : '第 ' + ch.order + ' 章 · 阿尔茨海默症关怀档案';
       } else {
         img.style.display = 'none';
         lockOverlay.style.display = 'flex';
@@ -308,6 +326,8 @@
             : '#3a2a1c';
         d.el.style.transform = active ? 'scale(1.4)' : 'scale(1)';
       });
+      memoryTab.style.background = view === 'memory' ? 'rgba(212,184,150,0.16)' : 'transparent';
+      medicalTab.style.background = view === 'medical' ? 'rgba(212,184,150,0.16)' : 'transparent';
     }
 
     prevBtn.addEventListener('click', function () { renderPage(currentMedicalPage - 1); });
@@ -317,6 +337,8 @@
         if (d.unlocked || d.order === 1) renderPage(d.order);
       });
     });
+    memoryTab.addEventListener('click', function () { view = 'memory'; renderPage(currentMedicalPage); });
+    medicalTab.addEventListener('click', function () { view = 'medical'; renderPage(currentMedicalPage); });
 
     renderPage(currentMedicalPage);
   }

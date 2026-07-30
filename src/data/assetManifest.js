@@ -58,6 +58,8 @@ const assetManifest = {
   ch10_porridge:  './assets/images/ch10_porridge.png',
   ch10_daughter_porridge_closeup: './assets/images/ch10_daughter_porridge_closeup.jpg',
   ch10_father_daughter_embrace:   './assets/images/ch10_father_daughter_embrace.jpg',
+  // 终章档案右页：复用已经随静态站点发布的医学知识卡，避免用文字假装有档案。
+  medical_ch10: './assets/pictures/medical/medical_ch10.jpg',
   mainMenuBg:  './assets/images/main_menu_bg.jpg',
   deskBg:      './assets/images/desk_bg.jpg',
   paperBase:   './assets/images/paper_base.jpg',

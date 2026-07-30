@@ -1,11 +1,10 @@
-// Canvas 漫画演出「活动」：配置驱动，逐格裁剪显示漫画分镜。
-// 纯呈现型，点击推进。通过 isFinished / onComplete 通知章节切换。
+// Canvas 漫画演出「活动」：整张漫画页淡入呈现。
+// 美术本身已完成分镜与构图，运行时不得再裁切；点击翻到下一张。
 export class ComicActivity {
   constructor(game) {
     this.game = game;
     this.config = null;
     this.imageKey = '';
-    this.currentPanel = 0;
     this.fadeDuration = 0.4;
     this.fadeTimer = 0;
     this.fading = false;
@@ -20,10 +19,9 @@ export class ComicActivity {
   start({ config, imageKey, onComplete } = {}) {
     this.config = config;
     this.imageKey = imageKey;
-    this.currentPanel = 0;
     this.time = 0;
     this.fadeTimer = 0;
-    this.fading = false;
+    this.fading = true;
     this.finished = false;
     this._cbFired = false;
     this._clickCooldown = 0;
@@ -75,21 +73,12 @@ export class ComicActivity {
 
   next() {
     if (this.finished) return;
-    if (!this.fading && this.currentPanel >= this.config.panels.length) {
-      this._fireDone();
-      return;
-    }
     if (this.fading) {
       this.fadeTimer = this.fadeDuration;
+      this.fading = false;
       return;
     }
-    this.currentPanel++;
-    this.fadeTimer = 0;
-    if (this.currentPanel > this.config.panels.length) {
-      this._fireDone();
-    } else {
-      this.fading = true;
-    }
+    this._fireDone();
   }
 
   update(dt) {
@@ -103,9 +92,7 @@ export class ComicActivity {
       if (this.fadeTimer >= this.fadeDuration) {
         this.fadeTimer = this.fadeDuration;
         this.fading = false;
-        if (this.currentPanel >= this.config.panels.length) {
-          this._fireDone();
-        }
+        this.fading = false;
       }
     }
   }
@@ -124,33 +111,15 @@ export class ComicActivity {
     const imgH = img.naturalHeight || img.height || height;
     if (!imgW || !imgH) { ctx.restore(); return; }
 
-    const scale = Math.max(width / imgW, height / imgH);
+    // contain 而非 cover：宁可留极细边，也绝不裁掉漫画的任意一格。
+    const scale = Math.min(width / imgW, height / imgH);
     const ox = (width - imgW * scale) / 2;
     const oy = (height - imgH * scale) / 2;
 
-    for (let i = 0; i < this.currentPanel; i++) {
-      const panel = this.config.panels[i];
-      if (!panel) continue;
-      const pts = panel.points;
-
-      let alpha = 1;
-      if (i === this.currentPanel - 1 && this.fading) {
-        alpha = Math.min(1, this.fadeTimer / this.fadeDuration);
-      }
-      if (alpha <= 0) continue;
-
-      ctx.save();
-      ctx.globalAlpha = alpha;
-      ctx.beginPath();
-      ctx.moveTo(ox + (pts[0][0] / 100) * imgW * scale, oy + (pts[0][1] / 100) * imgH * scale);
-      for (let p = 1; p < pts.length; p++) {
-        ctx.lineTo(ox + (pts[p][0] / 100) * imgW * scale, oy + (pts[p][1] / 100) * imgH * scale);
-      }
-      ctx.closePath();
-      ctx.clip();
-      ctx.drawImage(img, ox, oy, imgW * scale, imgH * scale);
-      ctx.restore();
-    }
+    ctx.save();
+    ctx.globalAlpha = Math.min(1, this.fadeTimer / this.fadeDuration);
+    ctx.drawImage(img, ox, oy, imgW * scale, imgH * scale);
+    ctx.restore();
 
     if (!this._cbFired) {
       const pa = 0.3 + 0.3 * Math.sin(this.time * 2);

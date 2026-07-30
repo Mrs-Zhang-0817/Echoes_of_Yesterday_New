@@ -47,7 +47,7 @@ export class Chapter10 {
     this.bowlRy = 60;
     this.bowlHitRadius = 150;
 
-    this.restartBtn = { x: 550, y: 660, w: 180, h: 42 };
+    this.restartBtn = { x: 720, y: 660, w: 180, h: 42 };
 
     // 蒙太奇活动（叙事活动，可独立替换）
     this.montage = null;
@@ -281,85 +281,92 @@ export class Chapter10 {
       ctx.restore();
     }
 
-    drawArchivePanel(ctx, 120, 24, width - 240, 82, '记忆恢复档案');
-    drawArchiveStamp(ctx, width - 165, 65, '已归档');
-
     const progress = this.game.progress.load() || { chapter: 1, memory: 0, completed: [] };
     const completed = progress.completed || [];
+    // 终章不再把精心制作的档案底图盖成一张文字清单：三个纸页位置分别承载
+    // 归来照片、叙事结论与医学档案，让玩家可以一眼回看故事的情感和主题。
+    this._drawPhoto(ctx, this.game.images.ch10_father_daughter_embrace, 142, 281, 405, 325);
+    this._drawPhoto(ctx, this.game.images.ch10_daughter_porridge_closeup, 568, 302, 292, 270);
+    this._drawPhoto(ctx, this.game.images.medical_ch10, 890, 350, 248, 245);
 
     ctx.save();
-    ctx.textAlign = 'left';
+    ctx.fillStyle = '#402916';
+    ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    const listStartY = 130;
-    const lineHeight = 48;
-    for (let i = 0; i < CHAPTERS.length; i++) {
-      const ch = CHAPTERS[i];
-      const y = listStartY + i * lineHeight;
-      const isCompleted = completed.includes(ch.id);
-      if (isCompleted) {
-        ctx.save();
-        ctx.fillStyle = 'rgba(196, 168, 120, 0.2)';
-        roundedRect(ctx, 180, y - lineHeight / 2 + 2, 860, lineHeight - 4, 6);
-        ctx.fill();
-        ctx.restore();
-      }
-      ctx.save();
-      ctx.fillStyle = isCompleted ? '#2a1a0c' : '#b8a488';
-      ctx.font = '500 20px "PingFang SC", system-ui, sans-serif';
-      ctx.textAlign = 'left';
-      ctx.textBaseline = 'middle';
-      ctx.fillText(`${String(ch.id).padStart(2, '0')} ${ch.title}`, 200, y);
-      ctx.textAlign = 'right';
-      ctx.font = '500 20px "PingFang SC", system-ui, sans-serif';
-      if (isCompleted) {
-        ctx.fillStyle = '#2a1a0c';
-        ctx.fillText('✅', 1000, y);
-      } else {
-        ctx.fillStyle = '#b8a488';
-        ctx.fillText('◻', 1000, y);
-      }
-      ctx.restore();
-      ctx.save();
-      ctx.textAlign = 'right';
-      ctx.textBaseline = 'middle';
-      ctx.fillStyle = isCompleted ? '#8a7a60' : '#d0c0a0';
-      ctx.font = '14px "PingFang SC", system-ui, sans-serif';
-      ctx.fillText(`${ch.memory}%`, 170, y);
-      ctx.restore();
-    }
+    ctx.font = '600 22px "STKaiti", "KaiTi", "PingFang SC", serif';
+    ctx.fillText('她认出了女儿，也认出了回家的路。', 784, 244);
+    ctx.font = '500 15px "PingFang SC", system-ui, sans-serif';
+    ctx.fillStyle = '#75583d';
+    ctx.fillText(`已恢复 ${completed.length} / ${CHAPTERS.length} 段记忆`, 784, 272);
     ctx.restore();
 
-    // 记忆值进度条
-    ctx.save();
-    const memory = progress.memory || 0;
-    const barX = 340, barY = 610, barW = 600, barH = 20, barR = 10;
-    ctx.textAlign = 'left';
-    ctx.textBaseline = 'middle';
-    ctx.fillStyle = '#2a1a0c';
-    ctx.font = '500 18px "PingFang SC", system-ui, sans-serif';
-    ctx.fillText('记忆恢复进度', 200, barY + barH / 2);
-    ctx.fillStyle = '#e0d0b0';
-    roundedRect(ctx, barX, barY, barW, barH, barR);
-    ctx.fill();
-    const fillW = Math.min(barW, (barW * memory) / 100);
-    if (fillW > 0) {
-      const fillGrad = ctx.createLinearGradient(barX, barY, barX + fillW, barY);
-      fillGrad.addColorStop(0, '#c4a060');
-      fillGrad.addColorStop(1, '#8B6914');
-      ctx.fillStyle = fillGrad;
-      roundedRect(ctx, barX, barY, fillW, barH, barR);
-      ctx.fill();
-    }
-    ctx.textAlign = 'left';
-    ctx.textBaseline = 'middle';
-    ctx.fillStyle = '#2a1a0c';
-    ctx.font = 'bold 22px "PingFang SC", system-ui, sans-serif';
-    ctx.fillText(`${memory}%`, barX + barW + 15, barY + barH / 2);
-    ctx.restore();
+    this._drawCaption(ctx, 155, 620, 370, '终章照片 · 爱从不迷路');
+    this._drawCaption(ctx, 585, 588, 258, '一碗热粥');
+    this._drawCaption(ctx, 900, 612, 228, '阿尔茨海默症关怀档案');
+
+    // 用底部三张纸条承载清晰的完成信息，而不是在档案上叠一个脱离视觉体系的面板。
+    this._drawChapterStrip(ctx, completed);
 
     ctx.save();
     const btn = this.restartBtn;
     drawArchiveButton(ctx, btn.x, btn.y, btn.w, btn.h, '重新开始');
+    ctx.restore();
+  }
+
+  _drawPhoto(ctx, image, x, y, w, h) {
+    if (!image || image._placeholder) return;
+    const iw = image.naturalWidth || image.width || 1;
+    const ih = image.naturalHeight || image.height || 1;
+    const scale = Math.max(w / iw, h / ih);
+    const dw = iw * scale;
+    const dh = ih * scale;
+    ctx.save();
+    roundedRect(ctx, x, y, w, h, 7);
+    ctx.clip();
+    ctx.drawImage(image, x + (w - dw) / 2, y + (h - dh) / 2, dw, dh);
+    ctx.restore();
+  }
+
+  _drawCaption(ctx, x, y, w, label) {
+    ctx.save();
+    ctx.fillStyle = 'rgba(247, 234, 207, 0.92)';
+    roundedRect(ctx, x, y, w, 30, 4);
+    ctx.fill();
+    ctx.fillStyle = '#4a301b';
+    ctx.font = '500 14px "PingFang SC", system-ui, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(label, x + w / 2, y + 15);
+    ctx.restore();
+  }
+
+  _drawChapterStrip(ctx, completed) {
+    const memory = Math.max(0, Math.min(100, this.game.progress.load()?.memory || 0));
+    const labels = ['镜前', '放学', '迷途', '警局', '归家', '餐桌', '夜醒', '镜子', '风铃', '认出'];
+    const x = 170;
+    const y = 652;
+    const gap = 54;
+    ctx.save();
+    for (let index = 0; index < labels.length; index += 1) {
+      const complete = completed.includes(index + 1);
+      const cx = x + index * gap;
+      ctx.fillStyle = complete ? '#9c6d35' : 'rgba(116, 87, 54, 0.32)';
+      ctx.beginPath();
+      ctx.arc(cx, y, 12, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = complete ? '#fff3d6' : '#6d5134';
+      ctx.font = '700 11px "PingFang SC", system-ui, sans-serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(String(index + 1), cx, y + 0.5);
+      ctx.fillStyle = '#5a3d25';
+      ctx.font = '11px "PingFang SC", system-ui, sans-serif';
+      ctx.fillText(labels[index], cx, y + 26);
+    }
+    ctx.font = '600 17px "PingFang SC", system-ui, sans-serif';
+    ctx.fillStyle = '#4a301b';
+    ctx.textAlign = 'right';
+    ctx.fillText(`记忆清晰度 ${memory}%`, 1135, 650);
     ctx.restore();
   }
 }

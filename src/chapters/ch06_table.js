@@ -23,6 +23,9 @@ export class Chapter06 {
     this.steam = this._initSteam();
 
     // Gating 2 — 气味拼图
+    // 每次进入第六章都从模板生成独立状态；不能污染模块级美术配置，
+    // 否则“重新开始”后三个香气会保持已收集状态，造成二周目卡死。
+    this.scents = SCENT_PARTICLES.map(scent => ({ ...scent, collected: false }));
     this.particles = this._initParticles();
     this.collectedCount = 0;
     this.fingerX = -1;
@@ -64,7 +67,7 @@ export class Chapter06 {
 
   _initParticles() {
     const list = [];
-    for (const scent of SCENT_PARTICLES) {
+    for (const scent of this.scents) {
       for (let i = 0; i < scent.count; i++) {
         const angle = Math.random() * Math.PI * 2;
         const dist = 30 + Math.random() * 60;
@@ -238,7 +241,7 @@ export class Chapter06 {
     for (const p of this.particles) {
       if (p.locked) continue;
 
-      const scent = SCENT_PARTICLES.find(s => s.id === p.scentId);
+      const scent = this.scents.find(s => s.id === p.scentId);
       if (!scent || scent.collected) continue;
 
       // 布朗运动：微小随机速度扰动
@@ -281,7 +284,7 @@ export class Chapter06 {
     }
 
     // 检查每种香气是否已收集足够粒子
-    for (const scent of SCENT_PARTICLES) {
+    for (const scent of this.scents) {
       if (scent.collected) continue;
       const locked = this.particles.filter(p => p.scentId === scent.id && p.locked).length;
       if (locked >= scent.count * 0.7) {
@@ -293,7 +296,7 @@ export class Chapter06 {
 
     // 目标发光动画
     for (let i = 0; i < 3; i++) {
-      const scent = SCENT_PARTICLES[i];
+      const scent = this.scents[i];
       this.targetGlow[i] += (scent.collected ? 1 - this.targetGlow[i] : 0 - this.targetGlow[i]) * Math.min(1, dt * 4);
     }
 
@@ -706,8 +709,8 @@ export class Chapter06 {
   }
 
   _drawTargetZones(ctx) {
-    for (let i = 0; i < SCENT_PARTICLES.length; i++) {
-      const scent = SCENT_PARTICLES[i];
+    for (let i = 0; i < this.scents.length; i++) {
+      const scent = this.scents[i];
       const glow = this.targetGlow[i];
 
       ctx.save();
@@ -752,8 +755,8 @@ export class Chapter06 {
   }
 
   _drawParticles(ctx) {
-    for (let i = 0; i < SCENT_PARTICLES.length; i++) {
-      const scent = SCENT_PARTICLES[i];
+    for (let i = 0; i < this.scents.length; i++) {
+      const scent = this.scents[i];
       if (scent.collected) continue;
 
       const particles = this.particles.filter(p => p.scentId === scent.id && !p.collected);
@@ -805,8 +808,8 @@ export class Chapter06 {
     roundedRect(ctx, cfg.x - 8, cfg.y - 8, 180, 44, 10);
     ctx.fill();
 
-    for (let i = 0; i < SCENT_PARTICLES.length; i++) {
-      const scent = SCENT_PARTICLES[i];
+    for (let i = 0; i < this.scents.length; i++) {
+      const scent = this.scents[i];
       const bx = cfg.x + i * (cfg.iconSize + cfg.gap);
       const by = cfg.y;
 
@@ -845,8 +848,8 @@ export class Chapter06 {
     this._drawTransformingFood(ctx, tp);
 
     // 目标区域光晕
-    for (let i = 0; i < SCENT_PARTICLES.length; i++) {
-      const scent = SCENT_PARTICLES[i];
+    for (let i = 0; i < this.scents.length; i++) {
+      const scent = this.scents[i];
       ctx.save();
       const g = ctx.createRadialGradient(scent.targetX, scent.targetY, 5, scent.targetX, scent.targetY, 40 + tp * 30);
       g.addColorStop(0, scent.color + '80');
