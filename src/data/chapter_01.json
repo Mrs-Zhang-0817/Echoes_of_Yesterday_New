@@ -1,0 +1,71 @@
+{
+  "chapterId": "chapter_01",
+  "date": "1998年9月1日",
+  "title": "第一次送你上学",
+  "subtitle": "章节回顾 · Chapter 01",
+  "photo": {
+    "image": "./MemoryReport/PhotoLayer/chapter_memory_photo/ch3.png",
+    "alt": "父亲送女儿上学的旧照片"
+  },
+  "reportSummary": {
+    "heading": "今日回忆已归档",
+    "description": [
+      "你成功完成了本章的故事",
+      "部分记忆变得更加清晰。"
+    ]
+  },
+  "clarity": {
+    "before": 5,
+    "current": 15
+  },
+  "memoryItemsSource": "./assets/memory_items/chapter01/memory_items.json",
+  "memoryRestore": {
+    "from": 5,
+    "to": 15,
+    "duration": 6200,
+    "items": [
+      "memory_001",
+      "memory_002"
+    ],
+    "emotion": "她背着书包回头朝我笑。"
+  },
+  "restoredMemory": [
+    {
+      "icon": "photo",
+      "title": "校门口的照片",
+      "status": "restored"
+    },
+    {
+      "icon": "name",
+      "title": "女儿的名字",
+      "status": "restored"
+    },
+    {
+      "icon": "place",
+      "title": "学校门口的槐树",
+      "status": "restored"
+    },
+    {
+      "icon": "object",
+      "title": "装糖的铁盒",
+      "status": "restored"
+    },
+    {
+      "icon": "moment",
+      "title": "放学这件事",
+      "status": "restored"
+    }
+  ],
+  "forgottenMemory": [
+    {
+      "title": "那天为什么迟到"
+    },
+    {
+      "title": "钥匙放在哪里"
+    },
+    {
+      "title": "后来还发生了什么"
+    }
+  ],
+  "emotionText": "她背着书包回头朝我笑，\n那一刻的阳光好亮。"
+}

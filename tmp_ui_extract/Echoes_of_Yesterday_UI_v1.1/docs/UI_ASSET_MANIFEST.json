@@ -1,0 +1,650 @@
+{
+  "package": "Echoes of Yesterday UI",
+  "version": "1.1",
+  "status": "preview-awaiting-approval",
+  "generatedAt": "2026-07-29T19:20:38.107Z",
+  "imageCount": 81,
+  "uiFileCount": 71,
+  "images": [
+    {
+      "path": "pictures/主界面底图.jpg",
+      "group": "01 正式主界面",
+      "order": "01",
+      "bytes": 2561053,
+      "sha256": "80a812173ab3b21db9d6fd8361928e30ac9650574ca7d02efd01255631df18b4"
+    },
+    {
+      "path": "pictures/按钮图.png",
+      "group": "01 正式主界面",
+      "order": "02",
+      "bytes": 1874850,
+      "sha256": "fbc5012be298b24b011bd7c85a00e1a3c5af394e72a3de0762f2b21fc2043916"
+    },
+    {
+      "path": "pictures/书本翻页底图.png",
+      "group": "01 正式主界面",
+      "order": "03",
+      "bytes": 2404686,
+      "sha256": "31b6f1d8ab367aa36814e98ab352919417b0320116f6b4289fea9f7ffb9db752"
+    },
+    {
+      "path": "记忆恢复报告新底图/第一章.png",
+      "group": "02 正式 Artwork Memory Report",
+      "order": "01",
+      "bytes": 2630858,
+      "sha256": "67a2e08a1bcab96a8e595caa7f33fd3d798d11c3cfcd3e73ddf046038ac743d0"
+    },
+    {
+      "path": "记忆恢复报告新底图/第二章.png",
+      "group": "02 正式 Artwork Memory Report",
+      "order": "02",
+      "bytes": 2575594,
+      "sha256": "4b2b57ed7903df9764df75c7246e0573328aa4d3f974389c66c2bd4e1b6cb24f"
+    },
+    {
+      "path": "记忆恢复报告新底图/第三章.png",
+      "group": "02 正式 Artwork Memory Report",
+      "order": "03",
+      "bytes": 2528240,
+      "sha256": "fc9474f9414356d3a4ce262aceb218d19d2aeb0b579117bc381e4af59f370915"
+    },
+    {
+      "path": "记忆恢复报告新底图/第四章 (2).png",
+      "group": "02 正式 Artwork Memory Report",
+      "order": "04",
+      "bytes": 2278971,
+      "sha256": "a12b248345df96e07be428ea15abd7462144a348e73aea24fa750515d160d38f"
+    },
+    {
+      "path": "记忆恢复报告新底图/第五章.png",
+      "group": "02 正式 Artwork Memory Report",
+      "order": "05",
+      "bytes": 2536157,
+      "sha256": "13ec02ba4f8b4b3399c1d285bbd6cf110ddc7f59069c617f533e7a06b8ee281b"
+    },
+    {
+      "path": "记忆恢复报告新底图/第六章.png",
+      "group": "02 正式 Artwork Memory Report",
+      "order": "06",
+      "bytes": 2482402,
+      "sha256": "ac2bf1916ad08f7f4ea2e072e541be56930fd425573963cbccc71e4773e017c2"
+    },
+    {
+      "path": "记忆恢复报告新底图/第七章 (2).png",
+      "group": "02 正式 Artwork Memory Report",
+      "order": "07",
+      "bytes": 2562385,
+      "sha256": "5974df1c1a3560b0319272f91b9357f2ba1e28b5a8a1daa56743bdf285465fd7"
+    },
+    {
+      "path": "记忆恢复报告新底图/第八章.png",
+      "group": "02 正式 Artwork Memory Report",
+      "order": "08",
+      "bytes": 2647552,
+      "sha256": "3567c9f7eb4d0166aabfd5a0dcc9671efb645ed5dab292183fe1436d243f5ddf"
+    },
+    {
+      "path": "记忆恢复报告新底图/第九章.png",
+      "group": "02 正式 Artwork Memory Report",
+      "order": "09",
+      "bytes": 4044892,
+      "sha256": "1cdf4be1c68b08127e58e26ee236a2c31df9d58e6c259be64aa8fa31f521ca09"
+    },
+    {
+      "path": "记忆恢复报告新底图/第十章.png",
+      "group": "02 正式 Artwork Memory Report",
+      "order": "10",
+      "bytes": 2007933,
+      "sha256": "a0ac70dad9bb86fa5bb6283cae4da98d158b9648861e242a235510836babb15a"
+    },
+    {
+      "path": "记忆恢复报告新底图/memorybutton1-transparent.png",
+      "group": "02 正式 Artwork Memory Report",
+      "order": "11",
+      "bytes": 592147,
+      "sha256": "421ddb8bf782a1978b7f10c82d858743650313da4d2c277e44f84650666bfebc"
+    },
+    {
+      "path": "记忆恢复报告新底图/memorybutton2-transparent.png",
+      "group": "02 正式 Artwork Memory Report",
+      "order": "12",
+      "bytes": 1079921,
+      "sha256": "75ffe1f4b74ad614f1a9a9b0d0ff0b635ecc7cb5a7f86da3abcf0b5f60c4705a"
+    },
+    {
+      "path": "记忆恢复报告新底图/memorybutton3-transparent.png",
+      "group": "02 正式 Artwork Memory Report",
+      "order": "13",
+      "bytes": 1326335,
+      "sha256": "baad18bc978992e8e8b40fe68e5db5916cd04fd62282e3fff39055a681312d81"
+    },
+    {
+      "path": "记忆恢复报告新底图/memorybutton1.jpg",
+      "group": "02 正式 Artwork Memory Report",
+      "order": "20-memorybutton1.jpg",
+      "bytes": 71204,
+      "sha256": "46417ecad394e29694c8d6cb0a8016d650bd1669539c2483ee5b514b14fb167f"
+    },
+    {
+      "path": "记忆恢复报告新底图/memorybutton2.png",
+      "group": "02 正式 Artwork Memory Report",
+      "order": "20-memorybutton2.png",
+      "bytes": 1281452,
+      "sha256": "5087070a67876d6b04093025016daa6c91799faaee3d9ebf69d3446e9d238d19"
+    },
+    {
+      "path": "记忆恢复报告新底图/memorybutton3.png",
+      "group": "02 正式 Artwork Memory Report",
+      "order": "20-memorybutton3.png",
+      "bytes": 1445400,
+      "sha256": "80e3b82abb3fda9cc4d347c87ee537b0a46827cc8ad2d183323a5f56dc5e723d"
+    },
+    {
+      "path": "assets/memory_items/chapter01/memory_001.png",
+      "group": "03 旧版与通用 UI",
+      "order": "assets/memory_items/chapter01/memory_001.png",
+      "bytes": 11267,
+      "sha256": "b5c085c9a91b54cf332fafd8ad67fbc550c3d8c7a844a42d1261b4106d2b1cee"
+    },
+    {
+      "path": "assets/memory_items/chapter01/memory_002.png",
+      "group": "03 旧版与通用 UI",
+      "order": "assets/memory_items/chapter01/memory_002.png",
+      "bytes": 11618,
+      "sha256": "2b7ce87bb60cdbc83a13fb9d0fd2984201c2cba62dc2c7380ff06ea9ba6e565c"
+    },
+    {
+      "path": "assets/memory_items/chapter01/memory_003.png",
+      "group": "03 旧版与通用 UI",
+      "order": "assets/memory_items/chapter01/memory_003.png",
+      "bytes": 11817,
+      "sha256": "d08e88a16afb1caf916ac6464185f5bd15371f0611d7ae90ca3893798ba8a46a"
+    },
+    {
+      "path": "assets/memory_items/chapter01/memory_004.png",
+      "group": "03 旧版与通用 UI",
+      "order": "assets/memory_items/chapter01/memory_004.png",
+      "bytes": 11518,
+      "sha256": "05b5867c7b6acd01670a4de9e4334aab21e7d20b55b9609670f8f7fddc0573e3"
+    },
+    {
+      "path": "assets/memory_items/chapter01/memory_005.png",
+      "group": "03 旧版与通用 UI",
+      "order": "assets/memory_items/chapter01/memory_005.png",
+      "bytes": 11631,
+      "sha256": "4990f61cac555809cd3b4832438f93ac5db5e78eb24ea572b9fac486ef99ce4d"
+    },
+    {
+      "path": "assets/memory_items/placeholder.png",
+      "group": "03 旧版与通用 UI",
+      "order": "assets/memory_items/placeholder.png",
+      "bytes": 590,
+      "sha256": "ea80c07aa710290fd947078a2612ef257a6c56a83b40f00cc0bcf0fead2295da"
+    },
+    {
+      "path": "assets/ui/backgrounds/paper_base.png",
+      "group": "03 旧版与通用 UI",
+      "order": "assets/ui/backgrounds/paper_base.png",
+      "bytes": 2689627,
+      "sha256": "8543d1585b8a178750831eace9ee75ce17dc777bf3dd23975aaf667480115f6d"
+    },
+    {
+      "path": "assets/ui/frames/button_frame.png",
+      "group": "03 旧版与通用 UI",
+      "order": "assets/ui/frames/button_frame.png",
+      "bytes": 1874850,
+      "sha256": "fbc5012be298b24b011bd7c85a00e1a3c5af394e72a3de0762f2b21fc2043916"
+    },
+    {
+      "path": "assets/ui/paper_noise.png",
+      "group": "03 旧版与通用 UI",
+      "order": "assets/ui/paper_noise.png",
+      "bytes": 12993,
+      "sha256": "a234bddfa21078c5722569a85b0c3030f497787d8fe7662c33a6b867a67e3469"
+    },
+    {
+      "path": "assets/ui/textures/paper_noise.png",
+      "group": "03 旧版与通用 UI",
+      "order": "assets/ui/textures/paper_noise.png",
+      "bytes": 2404686,
+      "sha256": "31b6f1d8ab367aa36814e98ab352919417b0320116f6b4289fea9f7ffb9db752"
+    },
+    {
+      "path": "MemoryReport/档案页相片/ch2.PNG",
+      "group": "03 旧版与通用 UI",
+      "order": "MemoryReport/档案页相片/ch2.PNG",
+      "bytes": 2620026,
+      "sha256": "5bbb003142cf46ab7fbd29e24d9f6d7e87e0095ac5fcd93cf8091be0414aff6e"
+    },
+    {
+      "path": "MemoryReport/档案页相片/ch3.PNG",
+      "group": "03 旧版与通用 UI",
+      "order": "MemoryReport/档案页相片/ch3.PNG",
+      "bytes": 3422489,
+      "sha256": "1604ea76be5a2a688349abdb63da8873b9615cb21c5aa0016cf9fccde3176e3e"
+    },
+    {
+      "path": "MemoryReport/档案页相片/ch4.PNG",
+      "group": "03 旧版与通用 UI",
+      "order": "MemoryReport/档案页相片/ch4.PNG",
+      "bytes": 2594529,
+      "sha256": "cc3c12c5baf9006beed8a3d31dcc6c609cb135e557e84233eaacb297adfabd2e"
+    },
+    {
+      "path": "MemoryReport/档案页相片/ch6.PNG",
+      "group": "03 旧版与通用 UI",
+      "order": "MemoryReport/档案页相片/ch6.PNG",
+      "bytes": 3831238,
+      "sha256": "4812f5f53e4b2ef6a23b22d367fffbb2074a4ee228220b183906b0a867f3a847"
+    },
+    {
+      "path": "MemoryReport/档案页相片/ch9.PNG",
+      "group": "03 旧版与通用 UI",
+      "order": "MemoryReport/档案页相片/ch9.PNG",
+      "bytes": 2589778,
+      "sha256": "5d9a17757422c1ad3a8ef85532d15e3a4ee8bd2d8d4e0ba78d8c7ceaa4f61d0f"
+    },
+    {
+      "path": "MemoryReport/BackgroundLayer/report_base.png",
+      "group": "03 旧版与通用 UI",
+      "order": "MemoryReport/BackgroundLayer/report_base.png",
+      "bytes": 2689627,
+      "sha256": "8543d1585b8a178750831eace9ee75ce17dc777bf3dd23975aaf667480115f6d"
+    },
+    {
+      "path": "MemoryReport/PhotoLayer/chapter_memory_photo/ch3.png",
+      "group": "03 旧版与通用 UI",
+      "order": "MemoryReport/PhotoLayer/chapter_memory_photo/ch3.png",
+      "bytes": 2835406,
+      "sha256": "7d3cf1c66a2ef5f8ecacb81b6cea7a242ce0c660c13c04b4d4f2c49c00af5ac2"
+    },
+    {
+      "path": "MemoryReport/PhotoLayer/chapter_memory_photo/ch4.png",
+      "group": "03 旧版与通用 UI",
+      "order": "MemoryReport/PhotoLayer/chapter_memory_photo/ch4.png",
+      "bytes": 2518089,
+      "sha256": "b757ea0f71966cb41ef40d74d65aaa59e36c6ce94fa8c9f99508179637f0dd92"
+    },
+    {
+      "path": "MemoryReport/PhotoLayer/chapter_memory_photo/ch6.png",
+      "group": "03 旧版与通用 UI",
+      "order": "MemoryReport/PhotoLayer/chapter_memory_photo/ch6.png",
+      "bytes": 2610049,
+      "sha256": "10c0c691d853c30998ba8f7fb00d225078975485db5668853f3f7deb45aa422e"
+    },
+    {
+      "path": "MemoryReport/PhotoLayer/chapter_memory_photo/ch9.png",
+      "group": "03 旧版与通用 UI",
+      "order": "MemoryReport/PhotoLayer/chapter_memory_photo/ch9.png",
+      "bytes": 2582987,
+      "sha256": "3d6f9bd9b92aa618087abafebec797252bf7a8cd671a7b6d5f19f4475ed44062"
+    },
+    {
+      "path": "第四章·警局/ChatGPT Image 2026年7月29日 10_35_12.png",
+      "group": "04 关卡美术",
+      "order": "第四章·警局/ChatGPT Image 2026年7月29日 10_35_12.png",
+      "bytes": 2807826,
+      "sha256": "0b0cc2c76c9183ffc37c4e2b1488c6bee9d34fa8ed1842841c2e05af5ac54309"
+    },
+    {
+      "path": "第四章·警局/ChatGPT Image 2026年7月29日 11_23_56.png",
+      "group": "04 关卡美术",
+      "order": "第四章·警局/ChatGPT Image 2026年7月29日 11_23_56.png",
+      "bytes": 2611601,
+      "sha256": "8c4c7543af7e8bcb2f35c55426159f802e639e227683324a48c3a15bdb227c93"
+    },
+    {
+      "path": "第四章·警局/ChatGPT Image 2026年7月29日 11_50_54.png",
+      "group": "04 关卡美术",
+      "order": "第四章·警局/ChatGPT Image 2026年7月29日 11_50_54.png",
+      "bytes": 2723374,
+      "sha256": "3ba61706f68e9c82972e0079790705d4eb237b84720c6877e0c2e395e7cce8db"
+    },
+    {
+      "path": "第四章·警局/ChatGPT Image 2026年7月29日 11_56_25.png",
+      "group": "04 关卡美术",
+      "order": "第四章·警局/ChatGPT Image 2026年7月29日 11_56_25.png",
+      "bytes": 2479772,
+      "sha256": "7d0eaa4e120413e769e7ed0f588fa598743d03e1d537762d552fd40f619372d2"
+    },
+    {
+      "path": "第四章·警局/ChatGPT Image 2026年7月29日 11_59_52.png",
+      "group": "04 关卡美术",
+      "order": "第四章·警局/ChatGPT Image 2026年7月29日 11_59_52.png",
+      "bytes": 2870466,
+      "sha256": "5cf7d26e6804d55412358a52965126b9d179770c8569c3b93ebec112fd65d114"
+    },
+    {
+      "path": "第四章·警局/ChatGPT Image 2026年7月29日 12_04_27.png",
+      "group": "04 关卡美术",
+      "order": "第四章·警局/ChatGPT Image 2026年7月29日 12_04_27.png",
+      "bytes": 2421581,
+      "sha256": "95a91d8ce80bb39d0d2c4bbb11ebd87cd32e7f289a2f9bfbdbc38c143f369ab9"
+    },
+    {
+      "path": "第四章·警局/ChatGPT Image 2026年7月29日 13_23_21.png",
+      "group": "04 关卡美术",
+      "order": "第四章·警局/ChatGPT Image 2026年7月29日 13_23_21.png",
+      "bytes": 2752732,
+      "sha256": "6a6b59b2fee8e780b7ffffe908a5c27a28f1f1b07b3463fed865ebe3b738f58a"
+    },
+    {
+      "path": "第四章·警局/ChatGPT Image 2026年7月29日 14_11_40.png",
+      "group": "04 关卡美术",
+      "order": "第四章·警局/ChatGPT Image 2026年7月29日 14_11_40.png",
+      "bytes": 2515494,
+      "sha256": "a086087212b6d43fbc61290e73ef0937ea557baf84cd9f515efd5e0a1eaf176e"
+    },
+    {
+      "path": "第四章第一视角情景演示/ChatGPT Image 2026年7月29日 23_15_49 (1).png",
+      "group": "04 关卡美术",
+      "order": "第四章第一视角情景演示/ChatGPT Image 2026年7月29日 23_15_49 (1).png",
+      "bytes": 2831189,
+      "sha256": "da87e9d3f20d28d70147100b9538fdd83f5cdb00ae4dfd55ec6b5129264dc142"
+    },
+    {
+      "path": "第四章第一视角情景演示/ChatGPT Image 2026年7月29日 23_15_49 (2).png",
+      "group": "04 关卡美术",
+      "order": "第四章第一视角情景演示/ChatGPT Image 2026年7月29日 23_15_49 (2).png",
+      "bytes": 2733885,
+      "sha256": "9feef246b7f62e751b382ad995613579ac870bcc4b99ab2608fb7bf623b72726"
+    },
+    {
+      "path": "第四章第一视角情景演示/ChatGPT Image 2026年7月29日 23_15_49 (3).png",
+      "group": "04 关卡美术",
+      "order": "第四章第一视角情景演示/ChatGPT Image 2026年7月29日 23_15_49 (3).png",
+      "bytes": 2831076,
+      "sha256": "59bb88ae12638e7d2faa95d178617fadf5789467964b71c12c906ba333591f62"
+    },
+    {
+      "path": "第四章第一视角情景演示/ChatGPT Image 2026年7月29日 23_15_49 (4).png",
+      "group": "04 关卡美术",
+      "order": "第四章第一视角情景演示/ChatGPT Image 2026年7月29日 23_15_49 (4).png",
+      "bytes": 2567405,
+      "sha256": "2e49610071d8552444a01a1fecd90b1b2c7ec82b7eefc0de9ceae4751871ce57"
+    },
+    {
+      "path": "第四章第一视角情景演示/ChatGPT Image 2026年7月29日 23_15_50 (5) (1).png",
+      "group": "04 关卡美术",
+      "order": "第四章第一视角情景演示/ChatGPT Image 2026年7月29日 23_15_50 (5) (1).png",
+      "bytes": 2695427,
+      "sha256": "fa76cad803fc5dd2bfdaecb760ea2cd8debb10a34318b6a4d32f9adef595558f"
+    },
+    {
+      "path": "第四章第一视角情景演示/ChatGPT Image 2026年7月29日 23_15_51 (7).png",
+      "group": "04 关卡美术",
+      "order": "第四章第一视角情景演示/ChatGPT Image 2026年7月29日 23_15_51 (7).png",
+      "bytes": 2679237,
+      "sha256": "83df2c7855d4d20fa99ecbb7a612db0391e9619a72087fecdb35e904519ddf72"
+    },
+    {
+      "path": "第一章/微信图片_20260730001750_48_115.jpg",
+      "group": "04 关卡美术",
+      "order": "第一章/微信图片_20260730001750_48_115.jpg",
+      "bytes": 420305,
+      "sha256": "e1d0846ef8d10888cef62f37ea3dba0b8b92356931bba842e5db598f45c68294"
+    },
+    {
+      "path": "第一章/微信图片_20260730001753_49_115.png",
+      "group": "04 关卡美术",
+      "order": "第一章/微信图片_20260730001753_49_115.png",
+      "bytes": 2212418,
+      "sha256": "96b500ad7e53f75bd9d3025e8c958043948c9fbb6c413f6117c4fc0476f53dcf"
+    },
+    {
+      "path": "第一章/微信图片_20260730001754_50_115.png",
+      "group": "04 关卡美术",
+      "order": "第一章/微信图片_20260730001754_50_115.png",
+      "bytes": 2646850,
+      "sha256": "5d9b06b1b9097d8b6bb527692500af516c7e341f778a7ca8413177c0afe08ba0"
+    },
+    {
+      "path": "第一章/微信图片_20260730001757_51_115.png",
+      "group": "04 关卡美术",
+      "order": "第一章/微信图片_20260730001757_51_115.png",
+      "bytes": 1420436,
+      "sha256": "79babb289eec50a0d8321a92d41a18ffbd9e85b68caca90d0c9848292dd2b7f3"
+    },
+    {
+      "path": "第一章/微信图片_20260730001800_52_115.png",
+      "group": "04 关卡美术",
+      "order": "第一章/微信图片_20260730001800_52_115.png",
+      "bytes": 1185323,
+      "sha256": "0a59d1c23ae75d7aa0c38747818a5da3b3e39434d2a56a2f82c12b6894fbbdd1"
+    },
+    {
+      "path": "第一章/微信图片_20260730001802_53_115.png",
+      "group": "04 关卡美术",
+      "order": "第一章/微信图片_20260730001802_53_115.png",
+      "bytes": 3151110,
+      "sha256": "f0cc5deacd04d800ea8bacabe9bab073ff5d931757b1895b3a40e6580c83e556"
+    },
+    {
+      "path": "第一章/微信图片_20260730001803_54_115.png",
+      "group": "04 关卡美术",
+      "order": "第一章/微信图片_20260730001803_54_115.png",
+      "bytes": 2390910,
+      "sha256": "1eef014586020f9b83236b0f6bd01fade49c4294fb844e3c362b58c21700263d"
+    },
+    {
+      "path": "第一章/微信图片_20260730001805_55_115.png",
+      "group": "04 关卡美术",
+      "order": "第一章/微信图片_20260730001805_55_115.png",
+      "bytes": 1989676,
+      "sha256": "ddb186945d0692b18f54eb948026a0471b624ac0e011b6815a4f8fde27a01040"
+    },
+    {
+      "path": "第一章/微信图片_20260730001807_56_115.png",
+      "group": "04 关卡美术",
+      "order": "第一章/微信图片_20260730001807_56_115.png",
+      "bytes": 2511966,
+      "sha256": "24f56110f9da9847c0661c63eeecef70d30afbda4193f926cc5bd771653fcfea"
+    },
+    {
+      "path": "第一章/微信图片_20260730001810_57_115.png",
+      "group": "04 关卡美术",
+      "order": "第一章/微信图片_20260730001810_57_115.png",
+      "bytes": 2182895,
+      "sha256": "d0e70422b40b7620e08d1b0e4d6aa65eac701782d5b6aec2c5c288ffbfc3212c"
+    },
+    {
+      "path": "美术素材/第二关拼图/客厅场景底图.png",
+      "group": "04 关卡美术",
+      "order": "美术素材/第二关拼图/客厅场景底图.png",
+      "bytes": 2727571,
+      "sha256": "7e2ea8d430afc986b12ada5c2eadf81634828d24d09f4d19ccc21a1586a6c4c5"
+    },
+    {
+      "path": "美术素材/第二关拼图/拼图.png",
+      "group": "04 关卡美术",
+      "order": "美术素材/第二关拼图/拼图.png",
+      "bytes": 3855138,
+      "sha256": "bda60d0ba795abec10fd48a8b8fafbf4760d2e9ab4866d7b5fc2295ddae5ca9f"
+    },
+    {
+      "path": "美术素材/第二关拼图/桌面.png",
+      "group": "04 关卡美术",
+      "order": "美术素材/第二关拼图/桌面.png",
+      "bytes": 2600731,
+      "sha256": "676c08b6a15a689eb0040c8d3ae459c891c76b5459ad277dece99ce0dfa96d82"
+    },
+    {
+      "path": "美术素材/签字单面板 (1).png",
+      "group": "04 关卡美术",
+      "order": "美术素材/签字单面板 (1).png",
+      "bytes": 2619449,
+      "sha256": "51056aa86e3a6ba1766881ecdd65f5d49fa8aa35d59d4f148c8593af670d898c"
+    },
+    {
+      "path": "美术素材/签字单面板 (2).png",
+      "group": "04 关卡美术",
+      "order": "美术素材/签字单面板 (2).png",
+      "bytes": 2440061,
+      "sha256": "444b07744cebc8ab2d33aefd3e4b649c615532f62585d412bcade533896d34b8"
+    },
+    {
+      "path": "assets/images/scene_desk.jpg",
+      "group": "04 关卡美术",
+      "order": "assets/images/scene_desk.jpg",
+      "bytes": 2600731,
+      "sha256": "676c08b6a15a689eb0040c8d3ae459c891c76b5459ad277dece99ce0dfa96d82"
+    },
+    {
+      "path": "assets/images/scene_puzzle.jpg",
+      "group": "04 关卡美术",
+      "order": "assets/images/scene_puzzle.jpg",
+      "bytes": 428813,
+      "sha256": "6dd6e59ba81a21c4a1169e5c329591d62f1074eca303423e3ff257207d10590f"
+    },
+    {
+      "path": "assets/images/scene_room.jpg",
+      "group": "04 关卡美术",
+      "order": "assets/images/scene_room.jpg",
+      "bytes": 2727571,
+      "sha256": "7e2ea8d430afc986b12ada5c2eadf81634828d24d09f4d19ccc21a1586a6c4c5"
+    },
+    {
+      "path": "Design_Document/Reference_Image/main_menu_ui.png",
+      "group": "05 设计参考",
+      "order": "Design_Document/Reference_Image/main_menu_ui.png",
+      "bytes": 2670644,
+      "sha256": "a5a515d7bc5baf385756620b7d4c64ae22ef42ac1c03bf9a1122bee96c60a4a8"
+    },
+    {
+      "path": "Design_Document/Reference_Image/memory_report_ui.png",
+      "group": "05 设计参考",
+      "order": "Design_Document/Reference_Image/memory_report_ui.png",
+      "bytes": 2900303,
+      "sha256": "60e3361e3139ec0fa53e48b94f2acf0f9e150629a6a398eb1793df30aca4b0fe"
+    },
+    {
+      "path": "Design_Document/Reference_Image/typography_reference.png",
+      "group": "05 设计参考",
+      "order": "Design_Document/Reference_Image/typography_reference.png",
+      "bytes": 2758744,
+      "sha256": "bb2d587d68e51007891a9ac57d4af6adc4f24c19054aa20685d7aa2c9bd2cc21"
+    },
+    {
+      "path": "showcase-demo/public/assets/按钮图.png",
+      "group": "06 展示副本",
+      "order": "showcase-demo/public/assets/按钮图.png",
+      "bytes": 1874850,
+      "sha256": "fbc5012be298b24b011bd7c85a00e1a3c5af394e72a3de0762f2b21fc2043916"
+    },
+    {
+      "path": "showcase-demo/public/assets/书本翻页底图.png",
+      "group": "06 展示副本",
+      "order": "showcase-demo/public/assets/书本翻页底图.png",
+      "bytes": 2404686,
+      "sha256": "31b6f1d8ab367aa36814e98ab352919417b0320116f6b4289fea9f7ffb9db752"
+    },
+    {
+      "path": "showcase-demo/public/assets/主界面底图.jpg",
+      "group": "06 展示副本",
+      "order": "showcase-demo/public/assets/主界面底图.jpg",
+      "bytes": 2561053,
+      "sha256": "80a812173ab3b21db9d6fd8361928e30ac9650574ca7d02efd01255631df18b4"
+    },
+    {
+      "path": "showcase-demo/public/favicon.svg",
+      "group": "06 展示副本",
+      "order": "showcase-demo/public/favicon.svg",
+      "bytes": 718,
+      "sha256": "3e8863288c2d43dd33d2a71de317dcf9198f09932ea8d61e0def1b846a865435"
+    },
+    {
+      "path": "showcase-demo/public/file.svg",
+      "group": "06 展示副本",
+      "order": "showcase-demo/public/file.svg",
+      "bytes": 391,
+      "sha256": "2b67812c325c199a02536cdbeea0c593a72f707d323b72ee3e08dbab06753bd4"
+    },
+    {
+      "path": "showcase-demo/public/globe.svg",
+      "group": "06 展示副本",
+      "order": "showcase-demo/public/globe.svg",
+      "bytes": 1035,
+      "sha256": "b614b9bf183925957661ac851498fe1d8029fd43a62fbfed86f9e2624a57e7cf"
+    },
+    {
+      "path": "showcase-demo/public/window.svg",
+      "group": "06 展示副本",
+      "order": "showcase-demo/public/window.svg",
+      "bytes": 385,
+      "sha256": "644768c4aaeb4767bce293344eeb0c125fb804a94d801440424072202d85e3a1"
+    }
+  ],
+  "uiFiles": [
+    "assets/ui/ui_assets.json",
+    "chapter-select.html",
+    "docs/code-review-report.md",
+    "docs/cur-ch2-fix-log.md",
+    "docs/project-context.md",
+    "docs/UI_ASSET_MANIFEST.json",
+    "docs/UI_ASSET_USAGE_GUIDE.md",
+    "docs/UI_BASELINE.md",
+    "docs/UI_PACKAGE_VALIDATION.md",
+    "docs/ui-package-preview.html",
+    "GAME_INTEGRATION_GUIDE.md",
+    "main-menu.html",
+    "memory-report-artwork.html",
+    "memory-report.html",
+    "scripts/chapter-select.js",
+    "src/animations/HoverEffects.js",
+    "src/animations/PageTransition.js",
+    "src/components/Button.js",
+    "src/components/MemoryStamp.js",
+    "src/components/PaperLayer.js",
+    "src/memory-report-artwork-config.js",
+    "src/memory-report-artwork.js",
+    "src/memory-report-phase4.js",
+    "src/phase4.js",
+    "src/styles/memory-report-artwork.css",
+    "src/styles/ui_motion.css",
+    "src/ui/animations/MemoryRestorationSequence.js",
+    "src/ui/components/DateStamp.js",
+    "src/ui/components/EmotionText.js",
+    "src/ui/components/ForgottenMemoryList.js",
+    "src/ui/components/MemoryButton.js",
+    "src/ui/components/MemoryClarity.js",
+    "src/ui/components/MemoryItem.js",
+    "src/ui/components/MemoryPanel.js",
+    "src/ui/components/MemorySummary.js",
+    "src/ui/components/MemoryThumbnail.js",
+    "src/ui/components/PhotoFrame.js",
+    "src/ui/components/RestoredMemoryList.js",
+    "src/ui/components/Stamp.js",
+    "src/ui/components/TextBlock.js",
+    "src/ui/core/AssetRegistry.js",
+    "src/ui/core/FontManager.js",
+    "src/ui/core/TextStyleManager.js",
+    "src/ui/core/UIAssetManager.js",
+    "src/ui/core/UIComponent.js",
+    "src/ui/core/UILayer.js",
+    "src/ui/core/UIManager.js",
+    "src/ui/data/MemoryItemDataSource.js",
+    "src/ui/effects/UIPostProcess.js",
+    "src/ui/MainMenuUI.js",
+    "src/ui/materials/PaperMaterial.js",
+    "src/ui/materials/PhotoMaterial.js",
+    "src/ui/materials/TextMaterialLayer.js",
+    "src/ui/memory-report-config.json",
+    "src/ui/MemoryReportApp.js",
+    "src/ui/MemoryReportUI.js",
+    "src/ui/phase5/MemoryReportVisualSystem.js",
+    "src/ui/phase5/MemoryVisualSystem.js",
+    "src/ui/screens/MemoryReportScreen.js",
+    "src/ui/state/MemoryRestoreStateManager.js",
+    "src/ui/styles/memory_report.css",
+    "src/ui/styles/memory_restoration.css",
+    "src/ui/styles/ui_constants.js",
+    "src/ui/styles/ui_materials.css",
+    "src/ui/typography/typography.css",
+    "src/ui/typography/TypographyConfig.js",
+    "src/ui/ui-config.js",
+    "src/ui/UIManager.js",
+    "styles/chapter-select.css",
+    "UI_CHANGELOG.md",
+    "UI_DESIGN_SYSTEM.md"
+  ]
+}

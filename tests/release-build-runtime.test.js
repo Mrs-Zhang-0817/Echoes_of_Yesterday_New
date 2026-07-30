@@ -14,4 +14,6 @@ test('release build inlines the data modules required by boot', () => {
   assert.match(output, /const GAME_CHAPTERS = \[/);
   assert.match(output, /const assetManifest = \{/);
   assert.match(output, /\[\.\.\.GAME_CHAPTERS\]\.sort/);
+  assert.match(output, /class FlashbackActivity/);
+  assert.match(output, /class MontageActivity/);
 });

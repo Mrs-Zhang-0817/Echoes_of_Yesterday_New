@@ -14,6 +14,7 @@ test('正式美术在各自交互画面完成加载且没有运行时错误', as
   page.on('console', message => { if (message.type() === 'error') errors.push(message.text()); });
   page.on('pageerror', error => errors.push(error.message));
   await page.goto(serverUrl, { waitUntil: 'networkidle' });
+  await page.locator('#BTN_START_MEMORY').click();
   await expect.poll(() => page.evaluate(() => Boolean(window.game && window.__debug__))).toBe(true);
 
   for (const [chapter, phase, phaseTime] of states) {

@@ -1,0 +1,54 @@
+{
+  "sfx_mirror_crack": {
+    "label": "ch1_镜面裂纹",
+    "dur": 0.3
+  },
+  "sfx_mirror_shatter": {
+    "label": "ch1_镜子碎裂",
+    "dur": 1.35
+  },
+  "sfx_ch1_complete": {
+    "label": "ch1_完成轻铃",
+    "dur": 1.15
+  },
+  "sfx_pickup": {
+    "label": "ch2_碎片拾起",
+    "dur": 0.13
+  },
+  "sfx_snap": {
+    "label": "ch2_碎片吸附",
+    "dur": 0.2
+  },
+  "sfx_puzzle_fade": {
+    "label": "ch2_色彩褪去",
+    "dur": 0.85
+  },
+  "sfx_flashback": {
+    "label": "ch2-3_记忆闪回",
+    "dur": 0.95
+  },
+  "sfx_node_select": {
+    "label": "ch3_节点选中",
+    "dur": 0.1
+  },
+  "sfx_route_wrong": {
+    "label": "ch3_路线错误",
+    "dur": 0.42
+  },
+  "sfx_route_success": {
+    "label": "ch3_找到成功",
+    "dur": 0.62
+  },
+  "sfx_route_fade": {
+    "label": "ch3_路线淡出",
+    "dur": 0.7
+  },
+  "sfx_paper_press": {
+    "label": "UI_纸张按压",
+    "dur": 0.16
+  },
+  "sfx_page_turn": {
+    "label": "漫画_翻页",
+    "dur": 0.5
+  }
+}

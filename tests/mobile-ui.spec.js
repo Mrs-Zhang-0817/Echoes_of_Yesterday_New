@@ -6,6 +6,7 @@ test('手机横屏下报告 UI 保持在画布内且按钮热区可用', async (
   const errors = [];
   page.on('pageerror', error => errors.push(error.message));
   await page.goto(process.env.SERVER_URL || 'http://127.0.0.1:3000/', { waitUntil: 'networkidle' });
+  await page.locator('#BTN_START_MEMORY').click();
   await expect.poll(() => page.evaluate(() => Boolean(window.game && window.__debug__))).toBe(true);
   await page.evaluate(() => {
     window.game.overlay.show({

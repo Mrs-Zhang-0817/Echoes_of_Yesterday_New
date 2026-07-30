@@ -1,0 +1,212 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <title>昨日重现 · 医学设计手记</title>
+  <link rel="stylesheet" href="./src/ui/typography/typography.css">
+  <style>
+    :root {
+      color-scheme: dark;
+      background: #1d1009;
+    }
+
+    * { box-sizing: border-box; }
+
+    html, body {
+      width: 100%;
+      height: 100%;
+      margin: 0;
+      overflow: hidden;
+      background: #1d1009;
+      touch-action: manipulation;
+    }
+
+    .showcase {
+      position: fixed;
+      inset: 0;
+      display: grid;
+      place-items: center;
+      background: radial-gradient(circle at 50% 45%, #50311c, #170c07 75%);
+    }
+
+    .stage {
+      position: relative;
+      width: min(100vw, calc(100svh * 16 / 9));
+      aspect-ratio: 16 / 9;
+      overflow: hidden;
+      isolation: isolate;
+      background: #2a180e;
+      box-shadow: 0 18px 50px rgba(18, 8, 3, .58);
+    }
+
+    .slider {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .slider img {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+      opacity: 0;
+      transition: opacity 500ms ease;
+      background: #1a0f08;
+    }
+
+    .slider img.active {
+      opacity: 1;
+      z-index: 2;
+    }
+
+    .controls {
+      position: absolute;
+      z-index: 20;
+      bottom: 3%;
+      left: 50%;
+      transform: translateX(-50%);
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      font: 14px var(--text-chapter-font, "STKaiti", "KaiTi", serif);
+      color: #d4b98a;
+      background: rgba(29, 16, 9, .78);
+      padding: 8px 22px;
+      border-radius: 4px;
+      backdrop-filter: blur(6px);
+    }
+
+    .controls button {
+      border: 0;
+      background: none;
+      color: #d4b98a;
+      font: inherit;
+      cursor: pointer;
+      padding: 4px 10px;
+      touch-action: manipulation;
+      transition: color 200ms;
+    }
+
+    .controls button:hover { color: #f8e3b8; }
+    .controls button:disabled { color: #6b4f32; }
+
+    .counter { min-width: 80px; text-align: center; }
+
+    .back {
+      position: absolute;
+      z-index: 20;
+      top: 3%;
+      left: 3%;
+      padding: 8px 16px;
+      border: 1px solid rgba(135, 100, 60, .45);
+      color: #d4b98a;
+      background: rgba(29, 16, 9, .72);
+      backdrop-filter: blur(6px);
+      font: 14px var(--text-chapter-font, "STKaiti", "KaiTi", serif);
+      text-decoration: none;
+      border-radius: 3px;
+      transition: background 200ms;
+      touch-action: manipulation;
+    }
+
+    .back:hover { background: rgba(55, 34, 18, .82); }
+
+    @media (orientation: portrait) {
+      .showcase::after {
+        content: "请横握手机";
+        position: fixed;
+        z-index: 100;
+        inset: 0;
+        display: grid;
+        place-items: center;
+        color: #f4ddb0;
+        background: #25140b;
+        font-size: 22px;
+        letter-spacing: .12em;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="showcase">
+    <section class="stage" aria-label="医学设计手记">
+      <a class="back" href="javascript:history.back()" aria-label="返回上一页">← 返回</a>
+
+      <div class="slider" id="slider"></div>
+
+      <nav class="controls">
+        <button id="prev" aria-label="上一页">← 上一页</button>
+        <span class="counter" id="counter">1 / 10</span>
+        <button id="next" aria-label="下一页">下一页 →</button>
+      </nav>
+    </section>
+  </main>
+
+  <script type="module">
+    const notes = [
+      { chapter: 1, title: "儿时的回忆", file: "01_儿时的回忆.png" },
+      { chapter: 2, title: "接女儿放学", file: "02_接女儿放学.png" },
+      { chapter: 3, title: "迷途", file: "03_迷途.png" },
+      { chapter: 4, title: "警局", file: "04_警局.png" },
+      { chapter: 5, title: "归家迷途", file: "05_归家迷途.png" },
+      { chapter: 6, title: "餐桌上的博弈", file: "06_餐桌上的博弈.png" },
+      { chapter: 7, title: "暗夜的微光", file: "07_暗夜的微光.png" },
+      { chapter: 8, title: "走廊的镜子", file: "08_走廊的镜子.png" },
+      { chapter: 9, title: "旧时光的风铃", file: "09_旧时光的风铃.png" },
+      { chapter: 10, title: "爱 · 从不迷路", file: "10_爱_从不迷路.png" },
+    ];
+
+    const params = new URLSearchParams(window.location.search);
+    const startChapter = parseInt(params.get("chapter")) || 1;
+    let current = Math.max(0, startChapter - 1);
+
+    const slider = document.getElementById("slider");
+    const counter = document.getElementById("counter");
+    const imgs = [];
+
+    notes.forEach((note, i) => {
+      const img = document.createElement("img");
+      img.src = `./assets/medical-notes/${note.file}`;
+      img.alt = `第${note.chapter}章 · ${note.title} — 医学设计手记`;
+      img.draggable = false;
+      img.classList.toggle("active", i === current);
+      slider.appendChild(img);
+      imgs.push(img);
+    });
+
+    function go(n) {
+      if (n < 0 || n >= notes.length) return;
+      imgs[current].classList.remove("active");
+      current = n;
+      imgs[current].classList.add("active");
+      counter.textContent = `${current + 1} / ${notes.length}`;
+      document.getElementById("prev").disabled = current === 0;
+      document.getElementById("next").disabled = current === notes.length - 1;
+    }
+
+    document.getElementById("prev").addEventListener("click", () => go(current - 1));
+    document.getElementById("next").addEventListener("click", () => go(current + 1));
+
+    // Keyboard navigation
+    document.addEventListener("keydown", (e) => {
+      if (e.key === "ArrowLeft") go(current - 1);
+      if (e.key === "ArrowRight") go(current + 1);
+    });
+
+    // Touch swipe
+    let touchStartX = 0;
+    document.addEventListener("touchstart", (e) => { touchStartX = e.touches[0].clientX; });
+    document.addEventListener("touchend", (e) => {
+      const diff = touchStartX - e.changedTouches[0].clientX;
+      if (Math.abs(diff) > 60) go(current + (diff > 0 ? 1 : -1));
+    });
+
+    go(current);
+  </script>
+</body>
+</html>

@@ -1,0 +1,155 @@
+# Images
+pictures/主界面底图.jpg
+pictures/按钮图.png
+pictures/书本翻页底图.png
+记忆恢复报告新底图/第一章.png
+记忆恢复报告新底图/第二章.png
+记忆恢复报告新底图/第三章.png
+记忆恢复报告新底图/第四章 (2).png
+记忆恢复报告新底图/第五章.png
+记忆恢复报告新底图/第六章.png
+记忆恢复报告新底图/第七章 (2).png
+记忆恢复报告新底图/第八章.png
+记忆恢复报告新底图/第九章.png
+记忆恢复报告新底图/第十章.png
+记忆恢复报告新底图/memorybutton1-transparent.png
+记忆恢复报告新底图/memorybutton2-transparent.png
+记忆恢复报告新底图/memorybutton3-transparent.png
+记忆恢复报告新底图/memorybutton1.jpg
+记忆恢复报告新底图/memorybutton2.png
+记忆恢复报告新底图/memorybutton3.png
+assets/memory_items/chapter01/memory_001.png
+assets/memory_items/chapter01/memory_002.png
+assets/memory_items/chapter01/memory_003.png
+assets/memory_items/chapter01/memory_004.png
+assets/memory_items/chapter01/memory_005.png
+assets/memory_items/placeholder.png
+assets/ui/backgrounds/paper_base.png
+assets/ui/frames/button_frame.png
+assets/ui/paper_noise.png
+assets/ui/textures/paper_noise.png
+MemoryReport/档案页相片/ch2.PNG
+MemoryReport/档案页相片/ch3.PNG
+MemoryReport/档案页相片/ch4.PNG
+MemoryReport/档案页相片/ch6.PNG
+MemoryReport/档案页相片/ch9.PNG
+MemoryReport/BackgroundLayer/report_base.png
+MemoryReport/PhotoLayer/chapter_memory_photo/ch3.png
+MemoryReport/PhotoLayer/chapter_memory_photo/ch4.png
+MemoryReport/PhotoLayer/chapter_memory_photo/ch6.png
+MemoryReport/PhotoLayer/chapter_memory_photo/ch9.png
+第四章·警局/ChatGPT Image 2026年7月29日 10_35_12.png
+第四章·警局/ChatGPT Image 2026年7月29日 11_23_56.png
+第四章·警局/ChatGPT Image 2026年7月29日 11_50_54.png
+第四章·警局/ChatGPT Image 2026年7月29日 11_56_25.png
+第四章·警局/ChatGPT Image 2026年7月29日 11_59_52.png
+第四章·警局/ChatGPT Image 2026年7月29日 12_04_27.png
+第四章·警局/ChatGPT Image 2026年7月29日 13_23_21.png
+第四章·警局/ChatGPT Image 2026年7月29日 14_11_40.png
+第四章第一视角情景演示/ChatGPT Image 2026年7月29日 23_15_49 (1).png
+第四章第一视角情景演示/ChatGPT Image 2026年7月29日 23_15_49 (2).png
+第四章第一视角情景演示/ChatGPT Image 2026年7月29日 23_15_49 (3).png
+第四章第一视角情景演示/ChatGPT Image 2026年7月29日 23_15_49 (4).png
+第四章第一视角情景演示/ChatGPT Image 2026年7月29日 23_15_50 (5) (1).png
+第四章第一视角情景演示/ChatGPT Image 2026年7月29日 23_15_51 (7).png
+第一章/微信图片_20260730001750_48_115.jpg
+第一章/微信图片_20260730001753_49_115.png
+第一章/微信图片_20260730001754_50_115.png
+第一章/微信图片_20260730001757_51_115.png
+第一章/微信图片_20260730001800_52_115.png
+第一章/微信图片_20260730001802_53_115.png
+第一章/微信图片_20260730001803_54_115.png
+第一章/微信图片_20260730001805_55_115.png
+第一章/微信图片_20260730001807_56_115.png
+第一章/微信图片_20260730001810_57_115.png
+美术素材/第二关拼图/客厅场景底图.png
+美术素材/第二关拼图/拼图.png
+美术素材/第二关拼图/桌面.png
+美术素材/签字单面板 (1).png
+美术素材/签字单面板 (2).png
+assets/images/scene_desk.jpg
+assets/images/scene_puzzle.jpg
+assets/images/scene_room.jpg
+Design_Document/Reference_Image/main_menu_ui.png
+Design_Document/Reference_Image/memory_report_ui.png
+Design_Document/Reference_Image/typography_reference.png
+showcase-demo/public/assets/按钮图.png
+showcase-demo/public/assets/书本翻页底图.png
+showcase-demo/public/assets/主界面底图.jpg
+showcase-demo/public/favicon.svg
+showcase-demo/public/file.svg
+showcase-demo/public/globe.svg
+showcase-demo/public/window.svg
+
+# UI files
+assets/ui/ui_assets.json
+chapter-select.html
+docs/code-review-report.md
+docs/cur-ch2-fix-log.md
+docs/project-context.md
+docs/UI_ASSET_MANIFEST.json
+docs/UI_ASSET_USAGE_GUIDE.md
+docs/UI_BASELINE.md
+docs/UI_PACKAGE_VALIDATION.md
+docs/ui-package-preview.html
+GAME_INTEGRATION_GUIDE.md
+main-menu.html
+memory-report-artwork.html
+memory-report.html
+scripts/chapter-select.js
+src/animations/HoverEffects.js
+src/animations/PageTransition.js
+src/components/Button.js
+src/components/MemoryStamp.js
+src/components/PaperLayer.js
+src/memory-report-artwork-config.js
+src/memory-report-artwork.js
+src/memory-report-phase4.js
+src/phase4.js
+src/styles/memory-report-artwork.css
+src/styles/ui_motion.css
+src/ui/animations/MemoryRestorationSequence.js
+src/ui/components/DateStamp.js
+src/ui/components/EmotionText.js
+src/ui/components/ForgottenMemoryList.js
+src/ui/components/MemoryButton.js
+src/ui/components/MemoryClarity.js
+src/ui/components/MemoryItem.js
+src/ui/components/MemoryPanel.js
+src/ui/components/MemorySummary.js
+src/ui/components/MemoryThumbnail.js
+src/ui/components/PhotoFrame.js
+src/ui/components/RestoredMemoryList.js
+src/ui/components/Stamp.js
+src/ui/components/TextBlock.js
+src/ui/core/AssetRegistry.js
+src/ui/core/FontManager.js
+src/ui/core/TextStyleManager.js
+src/ui/core/UIAssetManager.js
+src/ui/core/UIComponent.js
+src/ui/core/UILayer.js
+src/ui/core/UIManager.js
+src/ui/data/MemoryItemDataSource.js
+src/ui/effects/UIPostProcess.js
+src/ui/MainMenuUI.js
+src/ui/materials/PaperMaterial.js
+src/ui/materials/PhotoMaterial.js
+src/ui/materials/TextMaterialLayer.js
+src/ui/memory-report-config.json
+src/ui/MemoryReportApp.js
+src/ui/MemoryReportUI.js
+src/ui/phase5/MemoryReportVisualSystem.js
+src/ui/phase5/MemoryVisualSystem.js
+src/ui/screens/MemoryReportScreen.js
+src/ui/state/MemoryRestoreStateManager.js
+src/ui/styles/memory_report.css
+src/ui/styles/memory_restoration.css
+src/ui/styles/ui_constants.js
+src/ui/styles/ui_materials.css
+src/ui/typography/typography.css
+src/ui/typography/TypographyConfig.js
+src/ui/ui-config.js
+src/ui/UIManager.js
+styles/chapter-select.css
+UI_CHANGELOG.md
+UI_DESIGN_SYSTEM.md

@@ -1,9 +1,9 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { REPORT_PROGRESS, getReportScenePath } from '../src/ui/ArtworkMemoryReport.js';
+import { REPORT_PROGRESS, getReportAssetPath } from '../src/ui/ArtworkMemoryReport.js';
 
-test('report mapping pastes each chapter source scene into the shared report layout', () => {
-  assert.equal(getReportScenePath(7), './assets/images/ch7_bg_bedroom_night.jpg');
-  assert.equal(getReportScenePath(8), './assets/images/ch8_corridor.jpg');
+test('report mapping uses each chapter’s dedicated memory-report artwork', () => {
+  assert.equal(getReportAssetPath(7), './assets/images/report/ch07.jpg');
+  assert.equal(getReportAssetPath(8), './assets/images/report/ch08.jpg');
   assert.deepEqual(REPORT_PROGRESS, [0, 5, 15, 22, 30, 40, 52, 60, 72, 85, 100]);
 });

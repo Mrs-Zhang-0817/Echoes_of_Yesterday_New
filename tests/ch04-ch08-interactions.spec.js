@@ -13,6 +13,7 @@ test('第8关的挥手回退可完成，且没有页面错误', async ({ page })
   const errors = [];
   page.on('pageerror', error => errors.push(error.message));
   await page.goto(SERVER_URL, { waitUntil: 'networkidle' });
+  await page.locator('#BTN_START_MEMORY').click();
   await expect.poll(() => page.evaluate(() => Boolean(window.__debug__))).toBe(true);
 
   await page.evaluate(() => window.__debug__.switchTo('ch08'));

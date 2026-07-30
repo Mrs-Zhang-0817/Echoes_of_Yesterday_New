@@ -263,6 +263,7 @@ test.describe('视觉排查：昨日重现', () => {
   test('遍历全 10 章并截图排查', async ({ page }) => {
     // 1. 加载游戏
     await page.goto(SERVER_URL, { waitUntil: 'networkidle' });
+    await page.locator('#BTN_START_MEMORY').click();
     // 等待 loading 消失
     await page.waitForTimeout(1000);
     await page.waitForSelector('#loading.hidden', { timeout: 15000 }).catch(() => {

@@ -1,0 +1,892 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>《昨日重现》UI 预打包画廊</title>
+  <style>
+    :root { color-scheme: dark; font-family: system-ui, sans-serif; }
+    body { margin: 0; color: #ead9ba; background: #21160f; }
+    header { position: sticky; top: 0; z-index: 5; padding: 18px 4vw;
+      background: rgba(33,22,15,.94); border-bottom: 1px solid #715638; }
+    h1 { margin: 0 0 6px; font-size: 24px; } p { margin: 0; color: #bda88a; }
+    main { width: min(1500px, 92vw); margin: 28px auto 80px; }
+    section { margin-top: 36px; } h2 { border-bottom: 1px solid #59432d;
+      padding-bottom: 10px; } h2 span { color: #a88c66; font-size: 14px; }
+    .grid { display: grid; grid-template-columns: repeat(auto-fill,minmax(220px,1fr));
+      gap: 18px; }
+    figure { margin: 0; overflow: hidden; border: 1px solid #59432d;
+      border-radius: 8px; background: #2c1f16; }
+    .image-wrap { display: grid; place-items: center; aspect-ratio: 16/10;
+      background: repeating-conic-gradient(#34251a 0 25%,#2a1d15 0 50%) 0/20px 20px; }
+    img { max-width: 100%; max-height: 100%; object-fit: contain; }
+    figcaption { display: grid; gap: 5px; padding: 12px; }
+    figcaption strong { overflow-wrap: anywhere; }
+    small { color: #a99476; overflow-wrap: anywhere; }
+    ol { columns: 2; padding: 0; list-style: none; }
+    li { break-inside: avoid; padding: 6px; }
+    li span { display: inline-block; width: 32px; color: #a88c66; }
+    code { color: #dbc5a3; overflow-wrap: anywhere; }
+    @media (max-width: 720px) { ol { columns: 1; } }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>《昨日重现》UI 预打包画廊 · v1.1</h1>
+    <p>81 张图片 · 71 个 UI/文档文件 · 尚未生成 ZIP</p>
+  </header>
+  <main>
+    
+  <section>
+    <h2>01 正式主界面 <span>3 张</span></h2>
+    <div class="grid">
+      
+        <figure>
+          <div class="image-wrap">
+            <img src="../pictures/%E4%B8%BB%E7%95%8C%E9%9D%A2%E5%BA%95%E5%9B%BE.jpg" alt="pictures/主界面底图.jpg" loading="lazy">
+          </div>
+          <figcaption>
+            <strong>主界面底图.jpg</strong>
+            <small>pictures/主界面底图.jpg</small>
+            <small>2501.0 KB</small>
+          </figcaption>
+        </figure>
+        <figure>
+          <div class="image-wrap">
+            <img src="../pictures/%E6%8C%89%E9%92%AE%E5%9B%BE.png" alt="pictures/按钮图.png" loading="lazy">
+          </div>
+          <figcaption>
+            <strong>按钮图.png</strong>
+            <small>pictures/按钮图.png</small>
+            <small>1830.9 KB</small>
+          </figcaption>
+        </figure>
+        <figure>
+          <div class="image-wrap">
+            <img src="../pictures/%E4%B9%A6%E6%9C%AC%E7%BF%BB%E9%A1%B5%E5%BA%95%E5%9B%BE.png" alt="pictures/书本翻页底图.png" loading="lazy">
+          </div>
+          <figcaption>
+            <strong>书本翻页底图.png</strong>
+            <small>pictures/书本翻页底图.png</small>
+            <small>2348.3 KB</small>
+          </figcaption>
+        </figure>
+    </div>
+  </section>
+  <section>
+    <h2>02 正式 Artwork Memory Report <span>16 张</span></h2>
+    <div class="grid">
+      
+        <figure>
+          <div class="image-wrap">
+            <img src="../%E8%AE%B0%E5%BF%86%E6%81%A2%E5%A4%8D%E6%8A%A5%E5%91%8A%E6%96%B0%E5%BA%95%E5%9B%BE/%E7%AC%AC%E4%B8%80%E7%AB%A0.png" alt="记忆恢复报告新底图/第一章.png" loading="lazy">
+          </div>
+          <figcaption>
+            <strong>第一章.png</strong>
+            <small>记忆恢复报告新底图/第一章.png</small>
+            <small>2569.2 KB</small>
+          </figcaption>
+        </figure>
+        <figure>
+          <div class="image-wrap">
+            <img src="../%E8%AE%B0%E5%BF%86%E6%81%A2%E5%A4%8D%E6%8A%A5%E5%91%8A%E6%96%B0%E5%BA%95%E5%9B%BE/%E7%AC%AC%E4%BA%8C%E7%AB%A0.png" alt="记忆恢复报告新底图/第二章.png" loading="lazy">
+          </div>
+          <figcaption>
+            <strong>第二章.png</strong>
+            <small>记忆恢复报告新底图/第二章.png</small>
+            <small>2515.2 KB</small>
+          </figcaption>
+        </figure>
+        <figure>
+          <div class="image-wrap">
+            <img src="../%E8%AE%B0%E5%BF%86%E6%81%A2%E5%A4%8D%E6%8A%A5%E5%91%8A%E6%96%B0%E5%BA%95%E5%9B%BE/%E7%AC%AC%E4%B8%89%E7%AB%A0.png" alt="记忆恢复报告新底图/第三章.png" loading="lazy">
+          </div>
+          <figcaption>
+            <strong>第三章.png</strong>
+            <small>记忆恢复报告新底图/第三章.png</small>
+            <small>2469.0 KB</small>
+          </figcaption>
+        </figure>
+        <figure>
+          <div class="image-wrap">
+            <img src="../%E8%AE%B0%E5%BF%86%E6%81%A2%E5%A4%8D%E6%8A%A5%E5%91%8A%E6%96%B0%E5%BA%95%E5%9B%BE/%E7%AC%AC%E5%9B%9B%E7%AB%A0%20(2).png" alt="记忆恢复报告新底图/第四章 (2).png" loading="lazy">
+          </div>
+          <figcaption>
+            <strong>第四章 (2).png</strong>
+            <small>记忆恢复报告新底图/第四章 (2).png</small>
+            <small>2225.6 KB</small>
+          </figcaption>
+        </figure>
+        <figure>
+          <div class="image-wrap">
+            <img src="../%E8%AE%B0%E5%BF%86%E6%81%A2%E5%A4%8D%E6%8A%A5%E5%91%8A%E6%96%B0%E5%BA%95%E5%9B%BE/%E7%AC%AC%E4%BA%94%E7%AB%A0.png" alt="记忆恢复报告新底图/第五章.png" loading="lazy">
+          </div>
+          <figcaption>
+            <strong>第五章.png</strong>
+            <small>记忆恢复报告新底图/第五章.png</small>
+            <small>2476.7 KB</small>
+          </figcaption>
+        </figure>
+        <figure>
+          <div class="image-wrap">
+            <img src="../%E8%AE%B0%E5%BF%86%E6%81%A2%E5%A4%8D%E6%8A%A5%E5%91%8A%E6%96%B0%E5%BA%95%E5%9B%BE/%E7%AC%AC%E5%85%AD%E7%AB%A0.png" alt="记忆恢复报告新底图/第六章.png" loading="lazy">
+          </div>
+          <figcaption>
+            <strong>第六章.png</strong>
+            <small>记忆恢复报告新底图/第六章.png</small>
+            <small>2424.2 KB</small>
+          </figcaption>
+        </figure>
+        <figure>
+          <div class="image-wrap">
+            <img src="../%E8%AE%B0%E5%BF%86%E6%81%A2%E5%A4%8D%E6%8A%A5%E5%91%8A%E6%96%B0%E5%BA%95%E5%9B%BE/%E7%AC%AC%E4%B8%83%E7%AB%A0%20(2).png" alt="记忆恢复报告新底图/第七章 (2).png" loading="lazy">
+          </div>
+          <figcaption>
+            <strong>第七章 (2).png</strong>
+            <small>记忆恢复报告新底图/第七章 (2).png</small>
+            <small>2502.3 KB</small>
+          </figcaption>
+        </figure>
+        <figure>
+          <div class="image-wrap">
+            <img src="../%E8%AE%B0%E5%BF%86%E6%81%A2%E5%A4%8D%E6%8A%A5%E5%91%8A%E6%96%B0%E5%BA%95%E5%9B%BE/%E7%AC%AC%E5%85%AB%E7%AB%A0.png" alt="记忆恢复报告新底图/第八章.png" loading="lazy">
+          </div>
+          <figcaption>
+            <strong>第八章.png</strong>
+            <small>记忆恢复报告新底图/第八章.png</small>
+            <small>2585.5 KB</small>
+          </figcaption>
+        </figure>
+        <figure>
+          <div class="image-wrap">
+            <img src="../%E8%AE%B0%E5%BF%86%E6%81%A2%E5%A4%8D%E6%8A%A5%E5%91%8A%E6%96%B0%E5%BA%95%E5%9B%BE/%E7%AC%AC%E4%B9%9D%E7%AB%A0.png" alt="记忆恢复报告新底图/第九章.png" loading="lazy">
+          </div>
+          <figcaption>
+            <strong>第九章.png</strong>
+            <small>记忆恢复报告新底图/第九章.png</small>
+            <small>3950.1 KB</small>
+          </figcaption>
+        </figure>
+        <figure>
+          <div class="image-wrap">
+            <img src="../%E8%AE%B0%E5%BF%86%E6%81%A2%E5%A4%8D%E6%8A%A5%E5%91%8A%E6%96%B0%E5%BA%95%E5%9B%BE/%E7%AC%AC%E5%8D%81%E7%AB%A0.png" alt="记忆恢复报告新底图/第十章.png" loading="lazy">
+          </div>
+          <figcaption>
+            <strong>第十章.png</strong>
+            <small>记忆恢复报告新底图/第十章.png</small>
+            <small>1960.9 KB</small>
+          </figcaption>
+        </figure>
+        <figure>
+          <div class="image-wrap">
+            <img src="../%E8%AE%B0%E5%BF%86%E6%81%A2%E5%A4%8D%E6%8A%A5%E5%91%8A%E6%96%B0%E5%BA%95%E5%9B%BE/memorybutton1-transparent.png" alt="记忆恢复报告新底图/memorybutton1-transparent.png" loading="lazy">
+          </div>
+          <figcaption>
+            <strong>memorybutton1-transparent.png</strong>
+            <small>记忆恢复报告新底图/memorybutton1-transparent.png</small>
+            <small>578.3 KB</small>
+          </figcaption>
+        </figure>
+        <figure>
+          <div class="image-wrap">
+            <img src="../%E8%AE%B0%E5%BF%86%E6%81%A2%E5%A4%8D%E6%8A%A5%E5%91%8A%E6%96%B0%E5%BA%95%E5%9B%BE/memorybutton2-transparent.png" alt="记忆恢复报告新底图/memorybutton2-transparent.png" loading="lazy">
+          </div>
+          <figcaption>
+            <strong>memorybutton2-transparent.png</strong>
+            <small>记忆恢复报告新底图/memorybutton2-transparent.png</small>
+            <small>1054.6 KB</small>
+          </figcaption>
+        </figure>
+        <figure>
+          <div class="image-wrap">
+            <img src="../%E8%AE%B0%E5%BF%86%E6%81%A2%E5%A4%8D%E6%8A%A5%E5%91%8A%E6%96%B0%E5%BA%95%E5%9B%BE/memorybutton3-transparent.png" alt="记忆恢复报告新底图/memorybutton3-transparent.png" loading="lazy">
+          </div>
+          <figcaption>
+            <strong>memorybutton3-transparent.png</strong>
+            <small>记忆恢复报告新底图/memorybutton3-transparent.png</small>
+            <small>1295.2 KB</small>
+          </figcaption>
+        </figure>
+        <figure>
+          <div class="image-wrap">
+            <img src="../%E8%AE%B0%E5%BF%86%E6%81%A2%E5%A4%8D%E6%8A%A5%E5%91%8A%E6%96%B0%E5%BA%95%E5%9B%BE/memorybutton1.jpg" alt="记忆恢复报告新底图/memorybutton1.jpg" loading="lazy">
+          </div>
+          <figcaption>
+            <strong>memorybutton1.jpg</strong>
+            <small>记忆恢复报告新底图/memorybutton1.jpg</small>
+            <small>69.5 KB</small>
+          </figcaption>
+        </figure>
+        <figure>
+          <div class="image-wrap">
+            <img src="../%E8%AE%B0%E5%BF%86%E6%81%A2%E5%A4%8D%E6%8A%A5%E5%91%8A%E6%96%B0%E5%BA%95%E5%9B%BE/memorybutton2.png" alt="记忆恢复报告新底图/memorybutton2.png" loading="lazy">
+          </div>
+          <figcaption>
+            <strong>memorybutton2.png</strong>
+            <small>记忆恢复报告新底图/memorybutton2.png</small>
+            <small>1251.4 KB</small>
+          </figcaption>
+        </figure>
+        <figure>
+          <div class="image-wrap">
+            <img src="../%E8%AE%B0%E5%BF%86%E6%81%A2%E5%A4%8D%E6%8A%A5%E5%91%8A%E6%96%B0%E5%BA%95%E5%9B%BE/memorybutton3.png" alt="记忆恢复报告新底图/memorybutton3.png" loading="lazy">
+          </div>
+          <figcaption>
+            <strong>memorybutton3.png</strong>
+            <small>记忆恢复报告新底图/memorybutton3.png</small>
+            <small>1411.5 KB</small>
+          </figcaption>
+        </figure>
+    </div>
+  </section>
+  <section>
+    <h2>03 旧版与通用 UI <span>20 张</span></h2>
+    <div class="grid">
+      
+        <figure>
+          <div class="image-wrap">
+            <img src="../assets/memory_items/chapter01/memory_001.png" alt="assets/memory_items/chapter01/memory_001.png" loading="lazy">
+          </div>
+          <figcaption>
+            <strong>memory_001.png</strong>
+            <small>assets/memory_items/chapter01/memory_001.png</small>
+            <small>11.0 KB</small>
+          </figcaption>
+        </figure>
+        <figure>
+          <div class="image-wrap">
+            <img src="../assets/memory_items/chapter01/memory_002.png" alt="assets/memory_items/chapter01/memory_002.png" loading="lazy">
+          </div>
+          <figcaption>
+            <strong>memory_002.png</strong>
+            <small>assets/memory_items/chapter01/memory_002.png</small>
+            <small>11.3 KB</small>
+          </figcaption>
+        </figure>
+        <figure>
+          <div class="image-wrap">
+            <img src="../assets/memory_items/chapter01/memory_003.png" alt="assets/memory_items/chapter01/memory_003.png" loading="lazy">
+          </div>
+          <figcaption>
+            <strong>memory_003.png</strong>
+            <small>assets/memory_items/chapter01/memory_003.png</small>
+            <small>11.5 KB</small>
+          </figcaption>
+        </figure>
+        <figure>
+          <div class="image-wrap">
+            <img src="../assets/memory_items/chapter01/memory_004.png" alt="assets/memory_items/chapter01/memory_004.png" loading="lazy">
+          </div>
+          <figcaption>
+            <strong>memory_004.png</strong>
+            <small>assets/memory_items/chapter01/memory_004.png</small>
+            <small>11.2 KB</small>
+          </figcaption>
+        </figure>
+        <figure>
+          <div class="image-wrap">
+            <img src="../assets/memory_items/chapter01/memory_005.png" alt="assets/memory_items/chapter01/memory_005.png" loading="lazy">
+          </div>
+          <figcaption>
+            <strong>memory_005.png</strong>
+            <small>assets/memory_items/chapter01/memory_005.png</small>
+            <small>11.4 KB</small>
+          </figcaption>
+        </figure>
+        <figure>
+          <div class="image-wrap">
+            <img src="../assets/memory_items/placeholder.png" alt="assets/memory_items/placeholder.png" loading="lazy">
+          </div>
+          <figcaption>
+            <strong>placeholder.png</strong>
+            <small>assets/memory_items/placeholder.png</small>
+            <small>0.6 KB</small>
+          </figcaption>
+        </figure>
+        <figure>
+          <div class="image-wrap">
+            <img src="../assets/ui/backgrounds/paper_base.png" alt="assets/ui/backgrounds/paper_base.png" loading="lazy">
+          </div>
+          <figcaption>
+            <strong>paper_base.png</strong>
+            <small>assets/ui/backgrounds/paper_base.png</small>
+            <small>2626.6 KB</small>
+          </figcaption>
+        </figure>
+        <figure>
+          <div class="image-wrap">
+            <img src="../assets/ui/frames/button_frame.png" alt="assets/ui/frames/button_frame.png" loading="lazy">
+          </div>
+          <figcaption>
+            <strong>button_frame.png</strong>
+            <small>assets/ui/frames/button_frame.png</small>
+            <small>1830.9 KB</small>
+          </figcaption>
+        </figure>
+        <figure>
+          <div class="image-wrap">
+            <img src="../assets/ui/paper_noise.png" alt="assets/ui/paper_noise.png" loading="lazy">
+          </div>
+          <figcaption>
+            <strong>paper_noise.png</strong>
+            <small>assets/ui/paper_noise.png</small>
+            <small>12.7 KB</small>
+          </figcaption>
+        </figure>
+        <figure>
+          <div class="image-wrap">
+            <img src="../assets/ui/textures/paper_noise.png" alt="assets/ui/textures/paper_noise.png" loading="lazy">
+          </div>
+          <figcaption>
+            <strong>paper_noise.png</strong>
+            <small>assets/ui/textures/paper_noise.png</small>
+            <small>2348.3 KB</small>
+          </figcaption>
+        </figure>
+        <figure>
+          <div class="image-wrap">
+            <img src="../MemoryReport/%E6%A1%A3%E6%A1%88%E9%A1%B5%E7%9B%B8%E7%89%87/ch2.PNG" alt="MemoryReport/档案页相片/ch2.PNG" loading="lazy">
+          </div>
+          <figcaption>
+            <strong>ch2.PNG</strong>
+            <small>MemoryReport/档案页相片/ch2.PNG</small>
+            <small>2558.6 KB</small>
+          </figcaption>
+        </figure>
+        <figure>
+          <div class="image-wrap">
+            <img src="../MemoryReport/%E6%A1%A3%E6%A1%88%E9%A1%B5%E7%9B%B8%E7%89%87/ch3.PNG" alt="MemoryReport/档案页相片/ch3.PNG" loading="lazy">
+          </div>
+          <figcaption>
+            <strong>ch3.PNG</strong>
+            <small>MemoryReport/档案页相片/ch3.PNG</small>
+            <small>3342.3 KB</small>
+          </figcaption>
+        </figure>
+        <figure>
+          <div class="image-wrap">
+            <img src="../MemoryReport/%E6%A1%A3%E6%A1%88%E9%A1%B5%E7%9B%B8%E7%89%87/ch4.PNG" alt="MemoryReport/档案页相片/ch4.PNG" loading="lazy">
+          </div>
+          <figcaption>
+            <strong>ch4.PNG</strong>
+            <small>MemoryReport/档案页相片/ch4.PNG</small>
+            <small>2533.7 KB</small>
+          </figcaption>
+        </figure>
+        <figure>
+          <div class="image-wrap">
+            <img src="../MemoryReport/%E6%A1%A3%E6%A1%88%E9%A1%B5%E7%9B%B8%E7%89%87/ch6.PNG" alt="MemoryReport/档案页相片/ch6.PNG" loading="lazy">
+          </div>
+          <figcaption>
+            <strong>ch6.PNG</strong>
+            <small>MemoryReport/档案页相片/ch6.PNG</small>
+            <small>3741.4 KB</small>
+          </figcaption>
+        </figure>
+        <figure>
+          <div class="image-wrap">
+            <img src="../MemoryReport/%E6%A1%A3%E6%A1%88%E9%A1%B5%E7%9B%B8%E7%89%87/ch9.PNG" alt="MemoryReport/档案页相片/ch9.PNG" loading="lazy">
+          </div>
+          <figcaption>
+            <strong>ch9.PNG</strong>
+            <small>MemoryReport/档案页相片/ch9.PNG</small>
+            <small>2529.1 KB</small>
+          </figcaption>
+        </figure>
+        <figure>
+          <div class="image-wrap">
+            <img src="../MemoryReport/BackgroundLayer/report_base.png" alt="MemoryReport/BackgroundLayer/report_base.png" loading="lazy">
+          </div>
+          <figcaption>
+            <strong>report_base.png</strong>
+            <small>MemoryReport/BackgroundLayer/report_base.png</small>
+            <small>2626.6 KB</small>
+          </figcaption>
+        </figure>
+        <figure>
+          <div class="image-wrap">
+            <img src="../MemoryReport/PhotoLayer/chapter_memory_photo/ch3.png" alt="MemoryReport/PhotoLayer/chapter_memory_photo/ch3.png" loading="lazy">
+          </div>
+          <figcaption>
+            <strong>ch3.png</strong>
+            <small>MemoryReport/PhotoLayer/chapter_memory_photo/ch3.png</small>
+            <small>2769.0 KB</small>
+          </figcaption>
+        </figure>
+        <figure>
+          <div class="image-wrap">
+            <img src="../MemoryReport/PhotoLayer/chapter_memory_photo/ch4.png" alt="MemoryReport/PhotoLayer/chapter_memory_photo/ch4.png" loading="lazy">
+          </div>
+          <figcaption>
+            <strong>ch4.png</strong>
+            <small>MemoryReport/PhotoLayer/chapter_memory_photo/ch4.png</small>
+            <small>2459.1 KB</small>
+          </figcaption>
+        </figure>
+        <figure>
+          <div class="image-wrap">
+            <img src="../MemoryReport/PhotoLayer/chapter_memory_photo/ch6.png" alt="MemoryReport/PhotoLayer/chapter_memory_photo/ch6.png" loading="lazy">
+          </div>
+          <figcaption>
+            <strong>ch6.png</strong>
+            <small>MemoryReport/PhotoLayer/chapter_memory_photo/ch6.png</small>
+            <small>2548.9 KB</small>
+          </figcaption>
+        </figure>
+        <figure>
+          <div class="image-wrap">
+            <img src="../MemoryReport/PhotoLayer/chapter_memory_photo/ch9.png" alt="MemoryReport/PhotoLayer/chapter_memory_photo/ch9.png" loading="lazy">
+          </div>
+          <figcaption>
+            <strong>ch9.png</strong>
+            <small>MemoryReport/PhotoLayer/chapter_memory_photo/ch9.png</small>
+            <small>2522.4 KB</small>
+          </figcaption>
+        </figure>
+    </div>
+  </section>
+  <section>
+    <h2>04 关卡美术 <span>32 张</span></h2>
+    <div class="grid">
+      
+        <figure>
+          <div class="image-wrap">
+            <img src="../%E7%AC%AC%E5%9B%9B%E7%AB%A0%C2%B7%E8%AD%A6%E5%B1%80/ChatGPT%20Image%202026%E5%B9%B47%E6%9C%8829%E6%97%A5%2010_35_12.png" alt="第四章·警局/ChatGPT Image 2026年7月29日 10_35_12.png" loading="lazy">
+          </div>
+          <figcaption>
+            <strong>ChatGPT Image 2026年7月29日 10_35_12.png</strong>
+            <small>第四章·警局/ChatGPT Image 2026年7月29日 10_35_12.png</small>
+            <small>2742.0 KB</small>
+          </figcaption>
+        </figure>
+        <figure>
+          <div class="image-wrap">
+            <img src="../%E7%AC%AC%E5%9B%9B%E7%AB%A0%C2%B7%E8%AD%A6%E5%B1%80/ChatGPT%20Image%202026%E5%B9%B47%E6%9C%8829%E6%97%A5%2011_23_56.png" alt="第四章·警局/ChatGPT Image 2026年7月29日 11_23_56.png" loading="lazy">
+          </div>
+          <figcaption>
+            <strong>ChatGPT Image 2026年7月29日 11_23_56.png</strong>
+            <small>第四章·警局/ChatGPT Image 2026年7月29日 11_23_56.png</small>
+            <small>2550.4 KB</small>
+          </figcaption>
+        </figure>
+        <figure>
+          <div class="image-wrap">
+            <img src="../%E7%AC%AC%E5%9B%9B%E7%AB%A0%C2%B7%E8%AD%A6%E5%B1%80/ChatGPT%20Image%202026%E5%B9%B47%E6%9C%8829%E6%97%A5%2011_50_54.png" alt="第四章·警局/ChatGPT Image 2026年7月29日 11_50_54.png" loading="lazy">
+          </div>
+          <figcaption>
+            <strong>ChatGPT Image 2026年7月29日 11_50_54.png</strong>
+            <small>第四章·警局/ChatGPT Image 2026年7月29日 11_50_54.png</small>
+            <small>2659.5 KB</small>
+          </figcaption>
+        </figure>
+        <figure>
+          <div class="image-wrap">
+            <img src="../%E7%AC%AC%E5%9B%9B%E7%AB%A0%C2%B7%E8%AD%A6%E5%B1%80/ChatGPT%20Image%202026%E5%B9%B47%E6%9C%8829%E6%97%A5%2011_56_25.png" alt="第四章·警局/ChatGPT Image 2026年7月29日 11_56_25.png" loading="lazy">
+          </div>
+          <figcaption>
+            <strong>ChatGPT Image 2026年7月29日 11_56_25.png</strong>
+            <small>第四章·警局/ChatGPT Image 2026年7月29日 11_56_25.png</small>
+            <small>2421.7 KB</small>
+          </figcaption>
+        </figure>
+        <figure>
+          <div class="image-wrap">
+            <img src="../%E7%AC%AC%E5%9B%9B%E7%AB%A0%C2%B7%E8%AD%A6%E5%B1%80/ChatGPT%20Image%202026%E5%B9%B47%E6%9C%8829%E6%97%A5%2011_59_52.png" alt="第四章·警局/ChatGPT Image 2026年7月29日 11_59_52.png" loading="lazy">
+          </div>
+          <figcaption>
+            <strong>ChatGPT Image 2026年7月29日 11_59_52.png</strong>
+            <small>第四章·警局/ChatGPT Image 2026年7月29日 11_59_52.png</small>
+            <small>2803.2 KB</small>
+          </figcaption>
+        </figure>
+        <figure>
+          <div class="image-wrap">
+            <img src="../%E7%AC%AC%E5%9B%9B%E7%AB%A0%C2%B7%E8%AD%A6%E5%B1%80/ChatGPT%20Image%202026%E5%B9%B47%E6%9C%8829%E6%97%A5%2012_04_27.png" alt="第四章·警局/ChatGPT Image 2026年7月29日 12_04_27.png" loading="lazy">
+          </div>
+          <figcaption>
+            <strong>ChatGPT Image 2026年7月29日 12_04_27.png</strong>
+            <small>第四章·警局/ChatGPT Image 2026年7月29日 12_04_27.png</small>
+            <small>2364.8 KB</small>
+          </figcaption>
+        </figure>
+        <figure>
+          <div class="image-wrap">
+            <img src="../%E7%AC%AC%E5%9B%9B%E7%AB%A0%C2%B7%E8%AD%A6%E5%B1%80/ChatGPT%20Image%202026%E5%B9%B47%E6%9C%8829%E6%97%A5%2013_23_21.png" alt="第四章·警局/ChatGPT Image 2026年7月29日 13_23_21.png" loading="lazy">
+          </div>
+          <figcaption>
+            <strong>ChatGPT Image 2026年7月29日 13_23_21.png</strong>
+            <small>第四章·警局/ChatGPT Image 2026年7月29日 13_23_21.png</small>
+            <small>2688.2 KB</small>
+          </figcaption>
+        </figure>
+        <figure>
+          <div class="image-wrap">
+            <img src="../%E7%AC%AC%E5%9B%9B%E7%AB%A0%C2%B7%E8%AD%A6%E5%B1%80/ChatGPT%20Image%202026%E5%B9%B47%E6%9C%8829%E6%97%A5%2014_11_40.png" alt="第四章·警局/ChatGPT Image 2026年7月29日 14_11_40.png" loading="lazy">
+          </div>
+          <figcaption>
+            <strong>ChatGPT Image 2026年7月29日 14_11_40.png</strong>
+            <small>第四章·警局/ChatGPT Image 2026年7月29日 14_11_40.png</small>
+            <small>2456.5 KB</small>
+          </figcaption>
+        </figure>
+        <figure>
+          <div class="image-wrap">
+            <img src="../%E7%AC%AC%E5%9B%9B%E7%AB%A0%E7%AC%AC%E4%B8%80%E8%A7%86%E8%A7%92%E6%83%85%E6%99%AF%E6%BC%94%E7%A4%BA/ChatGPT%20Image%202026%E5%B9%B47%E6%9C%8829%E6%97%A5%2023_15_49%20(1).png" alt="第四章第一视角情景演示/ChatGPT Image 2026年7月29日 23_15_49 (1).png" loading="lazy">
+          </div>
+          <figcaption>
+            <strong>ChatGPT Image 2026年7月29日 23_15_49 (1).png</strong>
+            <small>第四章第一视角情景演示/ChatGPT Image 2026年7月29日 23_15_49 (1).png</small>
+            <small>2764.8 KB</small>
+          </figcaption>
+        </figure>
+        <figure>
+          <div class="image-wrap">
+            <img src="../%E7%AC%AC%E5%9B%9B%E7%AB%A0%E7%AC%AC%E4%B8%80%E8%A7%86%E8%A7%92%E6%83%85%E6%99%AF%E6%BC%94%E7%A4%BA/ChatGPT%20Image%202026%E5%B9%B47%E6%9C%8829%E6%97%A5%2023_15_49%20(2).png" alt="第四章第一视角情景演示/ChatGPT Image 2026年7月29日 23_15_49 (2).png" loading="lazy">
+          </div>
+          <figcaption>
+            <strong>ChatGPT Image 2026年7月29日 23_15_49 (2).png</strong>
+            <small>第四章第一视角情景演示/ChatGPT Image 2026年7月29日 23_15_49 (2).png</small>
+            <small>2669.8 KB</small>
+          </figcaption>
+        </figure>
+        <figure>
+          <div class="image-wrap">
+            <img src="../%E7%AC%AC%E5%9B%9B%E7%AB%A0%E7%AC%AC%E4%B8%80%E8%A7%86%E8%A7%92%E6%83%85%E6%99%AF%E6%BC%94%E7%A4%BA/ChatGPT%20Image%202026%E5%B9%B47%E6%9C%8829%E6%97%A5%2023_15_49%20(3).png" alt="第四章第一视角情景演示/ChatGPT Image 2026年7月29日 23_15_49 (3).png" loading="lazy">
+          </div>
+          <figcaption>
+            <strong>ChatGPT Image 2026年7月29日 23_15_49 (3).png</strong>
+            <small>第四章第一视角情景演示/ChatGPT Image 2026年7月29日 23_15_49 (3).png</small>
+            <small>2764.7 KB</small>
+          </figcaption>
+        </figure>
+        <figure>
+          <div class="image-wrap">
+            <img src="../%E7%AC%AC%E5%9B%9B%E7%AB%A0%E7%AC%AC%E4%B8%80%E8%A7%86%E8%A7%92%E6%83%85%E6%99%AF%E6%BC%94%E7%A4%BA/ChatGPT%20Image%202026%E5%B9%B47%E6%9C%8829%E6%97%A5%2023_15_49%20(4).png" alt="第四章第一视角情景演示/ChatGPT Image 2026年7月29日 23_15_49 (4).png" loading="lazy">
+          </div>
+          <figcaption>
+            <strong>ChatGPT Image 2026年7月29日 23_15_49 (4).png</strong>
+            <small>第四章第一视角情景演示/ChatGPT Image 2026年7月29日 23_15_49 (4).png</small>
+            <small>2507.2 KB</small>
+          </figcaption>
+        </figure>
+        <figure>
+          <div class="image-wrap">
+            <img src="../%E7%AC%AC%E5%9B%9B%E7%AB%A0%E7%AC%AC%E4%B8%80%E8%A7%86%E8%A7%92%E6%83%85%E6%99%AF%E6%BC%94%E7%A4%BA/ChatGPT%20Image%202026%E5%B9%B47%E6%9C%8829%E6%97%A5%2023_15_50%20(5)%20(1).png" alt="第四章第一视角情景演示/ChatGPT Image 2026年7月29日 23_15_50 (5) (1).png" loading="lazy">
+          </div>
+          <figcaption>
+            <strong>ChatGPT Image 2026年7月29日 23_15_50 (5) (1).png</strong>
+            <small>第四章第一视角情景演示/ChatGPT Image 2026年7月29日 23_15_50 (5) (1).png</small>
+            <small>2632.3 KB</small>
+          </figcaption>
+        </figure>
+        <figure>
+          <div class="image-wrap">
+            <img src="../%E7%AC%AC%E5%9B%9B%E7%AB%A0%E7%AC%AC%E4%B8%80%E8%A7%86%E8%A7%92%E6%83%85%E6%99%AF%E6%BC%94%E7%A4%BA/ChatGPT%20Image%202026%E5%B9%B47%E6%9C%8829%E6%97%A5%2023_15_51%20(7).png" alt="第四章第一视角情景演示/ChatGPT Image 2026年7月29日 23_15_51 (7).png" loading="lazy">
+          </div>
+          <figcaption>
+            <strong>ChatGPT Image 2026年7月29日 23_15_51 (7).png</strong>
+            <small>第四章第一视角情景演示/ChatGPT Image 2026年7月29日 23_15_51 (7).png</small>
+            <small>2616.4 KB</small>
+          </figcaption>
+        </figure>
+        <figure>
+          <div class="image-wrap">
+            <img src="../%E7%AC%AC%E4%B8%80%E7%AB%A0/%E5%BE%AE%E4%BF%A1%E5%9B%BE%E7%89%87_20260730001750_48_115.jpg" alt="第一章/微信图片_20260730001750_48_115.jpg" loading="lazy">
+          </div>
+          <figcaption>
+            <strong>微信图片_20260730001750_48_115.jpg</strong>
+            <small>第一章/微信图片_20260730001750_48_115.jpg</small>
+            <small>410.5 KB</small>
+          </figcaption>
+        </figure>
+        <figure>
+          <div class="image-wrap">
+            <img src="../%E7%AC%AC%E4%B8%80%E7%AB%A0/%E5%BE%AE%E4%BF%A1%E5%9B%BE%E7%89%87_20260730001753_49_115.png" alt="第一章/微信图片_20260730001753_49_115.png" loading="lazy">
+          </div>
+          <figcaption>
+            <strong>微信图片_20260730001753_49_115.png</strong>
+            <small>第一章/微信图片_20260730001753_49_115.png</small>
+            <small>2160.6 KB</small>
+          </figcaption>
+        </figure>
+        <figure>
+          <div class="image-wrap">
+            <img src="../%E7%AC%AC%E4%B8%80%E7%AB%A0/%E5%BE%AE%E4%BF%A1%E5%9B%BE%E7%89%87_20260730001754_50_115.png" alt="第一章/微信图片_20260730001754_50_115.png" loading="lazy">
+          </div>
+          <figcaption>
+            <strong>微信图片_20260730001754_50_115.png</strong>
+            <small>第一章/微信图片_20260730001754_50_115.png</small>
+            <small>2584.8 KB</small>
+          </figcaption>
+        </figure>
+        <figure>
+          <div class="image-wrap">
+            <img src="../%E7%AC%AC%E4%B8%80%E7%AB%A0/%E5%BE%AE%E4%BF%A1%E5%9B%BE%E7%89%87_20260730001757_51_115.png" alt="第一章/微信图片_20260730001757_51_115.png" loading="lazy">
+          </div>
+          <figcaption>
+            <strong>微信图片_20260730001757_51_115.png</strong>
+            <small>第一章/微信图片_20260730001757_51_115.png</small>
+            <small>1387.1 KB</small>
+          </figcaption>
+        </figure>
+        <figure>
+          <div class="image-wrap">
+            <img src="../%E7%AC%AC%E4%B8%80%E7%AB%A0/%E5%BE%AE%E4%BF%A1%E5%9B%BE%E7%89%87_20260730001800_52_115.png" alt="第一章/微信图片_20260730001800_52_115.png" loading="lazy">
+          </div>
+          <figcaption>
+            <strong>微信图片_20260730001800_52_115.png</strong>
+            <small>第一章/微信图片_20260730001800_52_115.png</small>
+            <small>1157.5 KB</small>
+          </figcaption>
+        </figure>
+        <figure>
+          <div class="image-wrap">
+            <img src="../%E7%AC%AC%E4%B8%80%E7%AB%A0/%E5%BE%AE%E4%BF%A1%E5%9B%BE%E7%89%87_20260730001802_53_115.png" alt="第一章/微信图片_20260730001802_53_115.png" loading="lazy">
+          </div>
+          <figcaption>
+            <strong>微信图片_20260730001802_53_115.png</strong>
+            <small>第一章/微信图片_20260730001802_53_115.png</small>
+            <small>3077.3 KB</small>
+          </figcaption>
+        </figure>
+        <figure>
+          <div class="image-wrap">
+            <img src="../%E7%AC%AC%E4%B8%80%E7%AB%A0/%E5%BE%AE%E4%BF%A1%E5%9B%BE%E7%89%87_20260730001803_54_115.png" alt="第一章/微信图片_20260730001803_54_115.png" loading="lazy">
+          </div>
+          <figcaption>
+            <strong>微信图片_20260730001803_54_115.png</strong>
+            <small>第一章/微信图片_20260730001803_54_115.png</small>
+            <small>2334.9 KB</small>
+          </figcaption>
+        </figure>
+        <figure>
+          <div class="image-wrap">
+            <img src="../%E7%AC%AC%E4%B8%80%E7%AB%A0/%E5%BE%AE%E4%BF%A1%E5%9B%BE%E7%89%87_20260730001805_55_115.png" alt="第一章/微信图片_20260730001805_55_115.png" loading="lazy">
+          </div>
+          <figcaption>
+            <strong>微信图片_20260730001805_55_115.png</strong>
+            <small>第一章/微信图片_20260730001805_55_115.png</small>
+            <small>1943.0 KB</small>
+          </figcaption>
+        </figure>
+        <figure>
+          <div class="image-wrap">
+            <img src="../%E7%AC%AC%E4%B8%80%E7%AB%A0/%E5%BE%AE%E4%BF%A1%E5%9B%BE%E7%89%87_20260730001807_56_115.png" alt="第一章/微信图片_20260730001807_56_115.png" loading="lazy">
+          </div>
+          <figcaption>
+            <strong>微信图片_20260730001807_56_115.png</strong>
+            <small>第一章/微信图片_20260730001807_56_115.png</small>
+            <small>2453.1 KB</small>
+          </figcaption>
+        </figure>
+        <figure>
+          <div class="image-wrap">
+            <img src="../%E7%AC%AC%E4%B8%80%E7%AB%A0/%E5%BE%AE%E4%BF%A1%E5%9B%BE%E7%89%87_20260730001810_57_115.png" alt="第一章/微信图片_20260730001810_57_115.png" loading="lazy">
+          </div>
+          <figcaption>
+            <strong>微信图片_20260730001810_57_115.png</strong>
+            <small>第一章/微信图片_20260730001810_57_115.png</small>
+            <small>2131.7 KB</small>
+          </figcaption>
+        </figure>
+        <figure>
+          <div class="image-wrap">
+            <img src="../%E7%BE%8E%E6%9C%AF%E7%B4%A0%E6%9D%90/%E7%AC%AC%E4%BA%8C%E5%85%B3%E6%8B%BC%E5%9B%BE/%E5%AE%A2%E5%8E%85%E5%9C%BA%E6%99%AF%E5%BA%95%E5%9B%BE.png" alt="美术素材/第二关拼图/客厅场景底图.png" loading="lazy">
+          </div>
+          <figcaption>
+            <strong>客厅场景底图.png</strong>
+            <small>美术素材/第二关拼图/客厅场景底图.png</small>
+            <small>2663.6 KB</small>
+          </figcaption>
+        </figure>
+        <figure>
+          <div class="image-wrap">
+            <img src="../%E7%BE%8E%E6%9C%AF%E7%B4%A0%E6%9D%90/%E7%AC%AC%E4%BA%8C%E5%85%B3%E6%8B%BC%E5%9B%BE/%E6%8B%BC%E5%9B%BE.png" alt="美术素材/第二关拼图/拼图.png" loading="lazy">
+          </div>
+          <figcaption>
+            <strong>拼图.png</strong>
+            <small>美术素材/第二关拼图/拼图.png</small>
+            <small>3764.8 KB</small>
+          </figcaption>
+        </figure>
+        <figure>
+          <div class="image-wrap">
+            <img src="../%E7%BE%8E%E6%9C%AF%E7%B4%A0%E6%9D%90/%E7%AC%AC%E4%BA%8C%E5%85%B3%E6%8B%BC%E5%9B%BE/%E6%A1%8C%E9%9D%A2.png" alt="美术素材/第二关拼图/桌面.png" loading="lazy">
+          </div>
+          <figcaption>
+            <strong>桌面.png</strong>
+            <small>美术素材/第二关拼图/桌面.png</small>
+            <small>2539.8 KB</small>
+          </figcaption>
+        </figure>
+        <figure>
+          <div class="image-wrap">
+            <img src="../%E7%BE%8E%E6%9C%AF%E7%B4%A0%E6%9D%90/%E7%AD%BE%E5%AD%97%E5%8D%95%E9%9D%A2%E6%9D%BF%20(1).png" alt="美术素材/签字单面板 (1).png" loading="lazy">
+          </div>
+          <figcaption>
+            <strong>签字单面板 (1).png</strong>
+            <small>美术素材/签字单面板 (1).png</small>
+            <small>2558.1 KB</small>
+          </figcaption>
+        </figure>
+        <figure>
+          <div class="image-wrap">
+            <img src="../%E7%BE%8E%E6%9C%AF%E7%B4%A0%E6%9D%90/%E7%AD%BE%E5%AD%97%E5%8D%95%E9%9D%A2%E6%9D%BF%20(2).png" alt="美术素材/签字单面板 (2).png" loading="lazy">
+          </div>
+          <figcaption>
+            <strong>签字单面板 (2).png</strong>
+            <small>美术素材/签字单面板 (2).png</small>
+            <small>2382.9 KB</small>
+          </figcaption>
+        </figure>
+        <figure>
+          <div class="image-wrap">
+            <img src="../assets/images/scene_desk.jpg" alt="assets/images/scene_desk.jpg" loading="lazy">
+          </div>
+          <figcaption>
+            <strong>scene_desk.jpg</strong>
+            <small>assets/images/scene_desk.jpg</small>
+            <small>2539.8 KB</small>
+          </figcaption>
+        </figure>
+        <figure>
+          <div class="image-wrap">
+            <img src="../assets/images/scene_puzzle.jpg" alt="assets/images/scene_puzzle.jpg" loading="lazy">
+          </div>
+          <figcaption>
+            <strong>scene_puzzle.jpg</strong>
+            <small>assets/images/scene_puzzle.jpg</small>
+            <small>418.8 KB</small>
+          </figcaption>
+        </figure>
+        <figure>
+          <div class="image-wrap">
+            <img src="../assets/images/scene_room.jpg" alt="assets/images/scene_room.jpg" loading="lazy">
+          </div>
+          <figcaption>
+            <strong>scene_room.jpg</strong>
+            <small>assets/images/scene_room.jpg</small>
+            <small>2663.6 KB</small>
+          </figcaption>
+        </figure>
+    </div>
+  </section>
+  <section>
+    <h2>05 设计参考 <span>3 张</span></h2>
+    <div class="grid">
+      
+        <figure>
+          <div class="image-wrap">
+            <img src="../Design_Document/Reference_Image/main_menu_ui.png" alt="Design_Document/Reference_Image/main_menu_ui.png" loading="lazy">
+          </div>
+          <figcaption>
+            <strong>main_menu_ui.png</strong>
+            <small>Design_Document/Reference_Image/main_menu_ui.png</small>
+            <small>2608.1 KB</small>
+          </figcaption>
+        </figure>
+        <figure>
+          <div class="image-wrap">
+            <img src="../Design_Document/Reference_Image/memory_report_ui.png" alt="Design_Document/Reference_Image/memory_report_ui.png" loading="lazy">
+          </div>
+          <figcaption>
+            <strong>memory_report_ui.png</strong>
+            <small>Design_Document/Reference_Image/memory_report_ui.png</small>
+            <small>2832.3 KB</small>
+          </figcaption>
+        </figure>
+        <figure>
+          <div class="image-wrap">
+            <img src="../Design_Document/Reference_Image/typography_reference.png" alt="Design_Document/Reference_Image/typography_reference.png" loading="lazy">
+          </div>
+          <figcaption>
+            <strong>typography_reference.png</strong>
+            <small>Design_Document/Reference_Image/typography_reference.png</small>
+            <small>2694.1 KB</small>
+          </figcaption>
+        </figure>
+    </div>
+  </section>
+  <section>
+    <h2>06 展示副本 <span>7 张</span></h2>
+    <div class="grid">
+      
+        <figure>
+          <div class="image-wrap">
+            <img src="../showcase-demo/public/assets/%E6%8C%89%E9%92%AE%E5%9B%BE.png" alt="showcase-demo/public/assets/按钮图.png" loading="lazy">
+          </div>
+          <figcaption>
+            <strong>按钮图.png</strong>
+            <small>showcase-demo/public/assets/按钮图.png</small>
+            <small>1830.9 KB</small>
+          </figcaption>
+        </figure>
+        <figure>
+          <div class="image-wrap">
+            <img src="../showcase-demo/public/assets/%E4%B9%A6%E6%9C%AC%E7%BF%BB%E9%A1%B5%E5%BA%95%E5%9B%BE.png" alt="showcase-demo/public/assets/书本翻页底图.png" loading="lazy">
+          </div>
+          <figcaption>
+            <strong>书本翻页底图.png</strong>
+            <small>showcase-demo/public/assets/书本翻页底图.png</small>
+            <small>2348.3 KB</small>
+          </figcaption>
+        </figure>
+        <figure>
+          <div class="image-wrap">
+            <img src="../showcase-demo/public/assets/%E4%B8%BB%E7%95%8C%E9%9D%A2%E5%BA%95%E5%9B%BE.jpg" alt="showcase-demo/public/assets/主界面底图.jpg" loading="lazy">
+          </div>
+          <figcaption>
+            <strong>主界面底图.jpg</strong>
+            <small>showcase-demo/public/assets/主界面底图.jpg</small>
+            <small>2501.0 KB</small>
+          </figcaption>
+        </figure>
+        <figure>
+          <div class="image-wrap">
+            <img src="../showcase-demo/public/favicon.svg" alt="showcase-demo/public/favicon.svg" loading="lazy">
+          </div>
+          <figcaption>
+            <strong>favicon.svg</strong>
+            <small>showcase-demo/public/favicon.svg</small>
+            <small>0.7 KB</small>
+          </figcaption>
+        </figure>
+        <figure>
+          <div class="image-wrap">
+            <img src="../showcase-demo/public/file.svg" alt="showcase-demo/public/file.svg" loading="lazy">
+          </div>
+          <figcaption>
+            <strong>file.svg</strong>
+            <small>showcase-demo/public/file.svg</small>
+            <small>0.4 KB</small>
+          </figcaption>
+        </figure>
+        <figure>
+          <div class="image-wrap">
+            <img src="../showcase-demo/public/globe.svg" alt="showcase-demo/public/globe.svg" loading="lazy">
+          </div>
+          <figcaption>
+            <strong>globe.svg</strong>
+            <small>showcase-demo/public/globe.svg</small>
+            <small>1.0 KB</small>
+          </figcaption>
+        </figure>
+        <figure>
+          <div class="image-wrap">
+            <img src="../showcase-demo/public/window.svg" alt="showcase-demo/public/window.svg" loading="lazy">
+          </div>
+          <figcaption>
+            <strong>window.svg</strong>
+            <small>showcase-demo/public/window.svg</small>
+            <small>0.4 KB</small>
+          </figcaption>
+        </figure>
+    </div>
+  </section>
+    <section>
+      <h2>08 UI 文件清单 <span>71 个</span></h2>
+      <ol><li><span>01</span><code>assets/ui/ui_assets.json</code></li><li><span>02</span><code>chapter-select.html</code></li><li><span>03</span><code>docs/code-review-report.md</code></li><li><span>04</span><code>docs/cur-ch2-fix-log.md</code></li><li><span>05</span><code>docs/project-context.md</code></li><li><span>06</span><code>docs/UI_ASSET_MANIFEST.json</code></li><li><span>07</span><code>docs/UI_ASSET_USAGE_GUIDE.md</code></li><li><span>08</span><code>docs/UI_BASELINE.md</code></li><li><span>09</span><code>docs/UI_PACKAGE_VALIDATION.md</code></li><li><span>10</span><code>docs/ui-package-preview.html</code></li><li><span>11</span><code>GAME_INTEGRATION_GUIDE.md</code></li><li><span>12</span><code>main-menu.html</code></li><li><span>13</span><code>memory-report-artwork.html</code></li><li><span>14</span><code>memory-report.html</code></li><li><span>15</span><code>scripts/chapter-select.js</code></li><li><span>16</span><code>src/animations/HoverEffects.js</code></li><li><span>17</span><code>src/animations/PageTransition.js</code></li><li><span>18</span><code>src/components/Button.js</code></li><li><span>19</span><code>src/components/MemoryStamp.js</code></li><li><span>20</span><code>src/components/PaperLayer.js</code></li><li><span>21</span><code>src/memory-report-artwork-config.js</code></li><li><span>22</span><code>src/memory-report-artwork.js</code></li><li><span>23</span><code>src/memory-report-phase4.js</code></li><li><span>24</span><code>src/phase4.js</code></li><li><span>25</span><code>src/styles/memory-report-artwork.css</code></li><li><span>26</span><code>src/styles/ui_motion.css</code></li><li><span>27</span><code>src/ui/animations/MemoryRestorationSequence.js</code></li><li><span>28</span><code>src/ui/components/DateStamp.js</code></li><li><span>29</span><code>src/ui/components/EmotionText.js</code></li><li><span>30</span><code>src/ui/components/ForgottenMemoryList.js</code></li><li><span>31</span><code>src/ui/components/MemoryButton.js</code></li><li><span>32</span><code>src/ui/components/MemoryClarity.js</code></li><li><span>33</span><code>src/ui/components/MemoryItem.js</code></li><li><span>34</span><code>src/ui/components/MemoryPanel.js</code></li><li><span>35</span><code>src/ui/components/MemorySummary.js</code></li><li><span>36</span><code>src/ui/components/MemoryThumbnail.js</code></li><li><span>37</span><code>src/ui/components/PhotoFrame.js</code></li><li><span>38</span><code>src/ui/components/RestoredMemoryList.js</code></li><li><span>39</span><code>src/ui/components/Stamp.js</code></li><li><span>40</span><code>src/ui/components/TextBlock.js</code></li><li><span>41</span><code>src/ui/core/AssetRegistry.js</code></li><li><span>42</span><code>src/ui/core/FontManager.js</code></li><li><span>43</span><code>src/ui/core/TextStyleManager.js</code></li><li><span>44</span><code>src/ui/core/UIAssetManager.js</code></li><li><span>45</span><code>src/ui/core/UIComponent.js</code></li><li><span>46</span><code>src/ui/core/UILayer.js</code></li><li><span>47</span><code>src/ui/core/UIManager.js</code></li><li><span>48</span><code>src/ui/data/MemoryItemDataSource.js</code></li><li><span>49</span><code>src/ui/effects/UIPostProcess.js</code></li><li><span>50</span><code>src/ui/MainMenuUI.js</code></li><li><span>51</span><code>src/ui/materials/PaperMaterial.js</code></li><li><span>52</span><code>src/ui/materials/PhotoMaterial.js</code></li><li><span>53</span><code>src/ui/materials/TextMaterialLayer.js</code></li><li><span>54</span><code>src/ui/memory-report-config.json</code></li><li><span>55</span><code>src/ui/MemoryReportApp.js</code></li><li><span>56</span><code>src/ui/MemoryReportUI.js</code></li><li><span>57</span><code>src/ui/phase5/MemoryReportVisualSystem.js</code></li><li><span>58</span><code>src/ui/phase5/MemoryVisualSystem.js</code></li><li><span>59</span><code>src/ui/screens/MemoryReportScreen.js</code></li><li><span>60</span><code>src/ui/state/MemoryRestoreStateManager.js</code></li><li><span>61</span><code>src/ui/styles/memory_report.css</code></li><li><span>62</span><code>src/ui/styles/memory_restoration.css</code></li><li><span>63</span><code>src/ui/styles/ui_constants.js</code></li><li><span>64</span><code>src/ui/styles/ui_materials.css</code></li><li><span>65</span><code>src/ui/typography/typography.css</code></li><li><span>66</span><code>src/ui/typography/TypographyConfig.js</code></li><li><span>67</span><code>src/ui/ui-config.js</code></li><li><span>68</span><code>src/ui/UIManager.js</code></li><li><span>69</span><code>styles/chapter-select.css</code></li><li><span>70</span><code>UI_CHANGELOG.md</code></li><li><span>71</span><code>UI_DESIGN_SYSTEM.md</code></li></ol>
+    </section>
+  </main>
+</body>
+</html>
