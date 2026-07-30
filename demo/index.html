@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>微笑检测 Demo</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: #111;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+    font-family: 'PingFang SC', system-ui, sans-serif;
+    color: #eee;
+  }
+  h1 { margin-bottom: 12px; font-size: 22px; color: #f0d78c; }
+  #status { margin-bottom: 16px; font-size: 16px; color: #aaa; text-align: center; max-width: 420px; }
+  .container { position: relative; border-radius: 50%; overflow: hidden; box-shadow: 0 0 40px rgba(180,140,80,0.3); }
+  #video { display: block; transform: scaleX(-1); width: 480px; height: 480px; object-fit: cover; }
+  .meter { margin-top: 16px; width: 400px; }
+  .meter-label { display: flex; justify-content: space-between; margin-bottom: 4px; font-size: 13px; }
+  .meter-bar { height: 8px; background: #333; border-radius: 4px; overflow: hidden; }
+  .meter-fill { height: 100%; border-radius: 4px; transition: width 0.1s; background: #f0d78c; }
+  .meter-fill.active { background: #4caf50; }
+  .info { margin-top: 20px; font-size: 12px; color: #666; text-align: center; line-height: 1.8; }
+</style>
+</head>
+<body>
+<h1>微笑检测 Demo</h1>
+<div id="status">初始化中...</div>
+<div class="container">
+  <video id="video" autoplay muted playsinline></video>
+</div>
+<div class="meter">
+  <div class="meter-label"><span>中性</span><span>微笑阈值 60%</span><span>微笑</span></div>
+  <div class="meter-bar"><div id="meterFill" class="meter-fill" style="width:0%"></div></div>
+</div>
+<div class="info">
+  全本地：face-api.min.js + TinyFaceDetector + FaceExpression<br>
+  对着镜头微笑 | 持续 1.5s 超过阈值即触发
+</div>
+
+<!-- 本地 face-api.js -->
+<script src="face-api.min.js"></script>
+<script>
+(function () {
+  var faceapi = window.faceapi;
+  var video = document.getElementById('video');
+  var statusEl = document.getElementById('status');
+  var meterFill = document.getElementById('meterFill');
+
+  var DETECT_INTERVAL = 200;
+  var HAPPY_THRESHOLD = 0.6;
+  var HOLD_DURATION = 1500;
+  var MODEL_PATH = './models/';
+
+  var modelsLoaded = false;
+  var detectTimer = null;
+  var smileStartTime = 0;
+  var triggered = false;
+
+  async function loadModels() {
+    statusEl.textContent = '加载人脸检测模型...（~530KB）';
+    try {
+      await faceapi.nets.tinyFaceDetector.load(MODEL_PATH);
+      statusEl.textContent = '加载表情识别模型...（~335KB）';
+      await faceapi.nets.faceExpressionNet.load(MODEL_PATH);
+      modelsLoaded = true;
+      statusEl.textContent = '模型就绪，正在启动摄像头...';
+    } catch (err) {
+      statusEl.textContent = '模型加载失败: ' + err.message;
+      console.error(err);
+    }
+  }
+
+  async function startCamera() {
+    try {
+      var stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: 'user', width: { ideal: 480 }, height: { ideal: 480 } },
+      });
+      video.srcObject = stream;
+      await video.play();
+      statusEl.textContent = '直视镜头，试试微笑';
+      startDetection();
+    } catch (err) {
+      statusEl.textContent = '摄像头启动失败: ' + err.message;
+      console.error(err);
+    }
+  }
+
+  function startDetection() {
+    detectTimer = setInterval(async function () {
+      if (!modelsLoaded || video.readyState < 2) return;
+
+      try {
+        var result = await faceapi
+          .detectSingleFace(video, new faceapi.TinyFaceDetectorOptions({ inputSize: 320 }))
+          .withFaceExpressions();
+
+        if (result && result.expressions) {
+          var happy = result.expressions.happy || 0;
+          updateMeter(happy);
+          checkTrigger(happy);
+        }
+      } catch (err) {
+        // 单帧失败静默跳过
+      }
+    }, DETECT_INTERVAL);
+  }
+
+  function updateMeter(happy) {
+    var pct = Math.min(100, happy * 100);
+    meterFill.style.width = pct + '%';
+    meterFill.className = 'meter-fill' + (happy >= HAPPY_THRESHOLD ? ' active' : '');
+  }
+
+  function checkTrigger(happy) {
+    if (triggered) return;
+
+    if (happy >= HAPPY_THRESHOLD) {
+      if (smileStartTime === 0) smileStartTime = Date.now();
+      var elapsed = Date.now() - smileStartTime;
+      var remaining = Math.ceil((HOLD_DURATION - elapsed) / 1000);
+      statusEl.textContent = (remaining > 0)
+        ? '保持微笑... ' + remaining + 's'
+        : '检测通过！';
+
+      if (elapsed >= HOLD_DURATION) {
+        triggered = true;
+        statusEl.textContent = '微笑检测通过！镜中的是你自己。';
+        meterFill.style.width = '100%';
+        meterFill.className = 'meter-fill active';
+        clearInterval(detectTimer);
+      }
+    } else {
+      if (smileStartTime > 0) statusEl.textContent = '再来一次，保持微笑';
+      smileStartTime = 0;
+    }
+  }
+
+  (async function () {
+    await loadModels();
+    await startCamera();
+  })();
+})();
+</script>
+</body>
+</html>

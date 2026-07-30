@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>弹幕引擎 Demo</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: #000;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+    font-family: 'PingFang SC', system-ui, sans-serif;
+    color: #ccc;
+  }
+  h2 { margin-bottom: 12px; font-size: 18px; color: #d4b896; }
+  #status { margin-bottom: 12px; font-size: 13px; color: #888; }
+  canvas { display: block; border: 1px solid #222; }
+  .controls { margin-top: 16px; font-size: 12px; color: #666; text-align: center; line-height: 1.8; }
+  .controls kbd { background: #333; padding: 2px 6px; border-radius: 3px; color: #d4b896; }
+</style>
+</head>
+<body>
+<h2>DanmakuEngine Demo</h2>
+<div id="status">运行中 | 按 空格键 暂停</div>
+<canvas id="canvas" width="1280" height="720"></canvas>
+<div class="controls">
+  <kbd>空格</kbd> 暂停 / 恢复 &nbsp;
+  <kbd>↑</kbd> 加快 &nbsp;
+  <kbd>↓</kbd> 减慢 &nbsp;
+  <kbd>R</kbd> 重新开始
+</div>
+
+<script>
+// 直接内联 DanmakuEngine — 独立测试不走 import
+(function () {
+  // === 内联 DanmakuEngine ===
+  var DEFAULT_MESSAGES = [
+    '你不是一个人。','总有人在牵挂着你。','黑暗只是暂时的。',
+    '慢慢来，不着急。','我们都在这。','微光就在前方。',
+    '深呼吸，放轻松。','有人在前方为你留了一盏灯。','你被爱着。',
+    '别怕，往前走吧。','记得那年的风铃声吗？','有人在等你回家。',
+    '月光会照进来的。','你走过的路，都算数。','每一段记忆都是珍贵的。',
+    '总有一束光为你而来。','黑夜再长，也有尽头。','他们都在为你加油。',
+    '你从来都不是孤身一人。','再试一次，你可以的。',
+  ];
+
+  function rand(min, max) { return min + Math.random() * (max - min); }
+  function pickRandom(arr) { return arr[Math.floor(Math.random() * arr.length)]; }
+
+  var WARM_COLORS = [
+    [240, 192, 64], [212, 184, 150], [255, 220, 140],
+    [220, 170, 100], [200, 160, 100],
+  ];
+  function pickColor() { return WARM_COLORS[Math.floor(Math.random() * WARM_COLORS.length)]; }
+
+  function DanmakuEngine(messages, opts) {
+    opts = opts || {};
+    this.messages = messages && messages.length > 0 ? messages : DEFAULT_MESSAGES;
+    this.poolSize = opts.poolSize || 25;
+    this.maxActive = opts.maxActive || 8;
+    this.speedMin = (opts.speedRange && opts.speedRange[0]) || 40;
+    this.speedMax = (opts.speedRange && opts.speedRange[1]) || 80;
+    this.spawnMin = (opts.spawnInterval && opts.spawnInterval[0]) || 1.5;
+    this.spawnMax = (opts.spawnInterval && opts.spawnInterval[1]) || 3.5;
+    this.fontMin = (opts.fontSizeRange && opts.fontSizeRange[0]) || 16;
+    this.fontMax = (opts.fontSizeRange && opts.fontSizeRange[1]) || 24;
+    this.screenWidth = opts.screenWidth || 1280;
+    this.screenHeight = opts.screenHeight || 720;
+    this.marginTop = opts.marginTop || 100;
+    this.marginBottom = opts.marginBottom || 160;
+    this.enterDuration = 0.6;
+    this.exitDuration = 0.8;
+    this._rowCooldown = 1.2;
+    this._rowCount = 6;
+    this._rowTimers = new Array(this._rowCount).fill(this._rowCooldown);
+    this._running = false;
+    this._spawnTimer = 0;
+    this._gameTime = 0;
+    this._intensity = 1;
+    this._pool = [];
+    for (var i = 0; i < this.poolSize; i++) {
+      this._pool.push(createDeadItem());
+    }
+  }
+
+  function createDeadItem() {
+    return {
+      text: '', x: 0, y: 0, speed: 0, alpha: 0, life: 0,
+      fontSize: 16, state: 'dead', enterTimer: 0, exitTimer: 0,
+      _color: [220, 190, 140], _textWidth: 0, _row: 0,
+      _sway: 0, _swayPhase: Math.random() * Math.PI * 2,
+      _swaySpeed: rand(0.8, 2.0), _swayAmp: rand(1, 4),
+    };
+  }
+
+  DanmakuEngine.prototype.start = function () {
+    this._running = true; this._spawnTimer = 0;
+  };
+  DanmakuEngine.prototype.pause = function () { this._running = false; };
+  DanmakuEngine.prototype.resume = function () { this._running = true; };
+  DanmakuEngine.prototype.stop = function () {
+    this._running = false;
+    this._gameTime = 0; this._spawnTimer = 0;
+    for (var i = 0; i < this._pool.length; i++) {
+      this._pool[i].state = 'dead'; this._pool[i].alpha = 0;
+    }
+    for (var r = 0; r < this._rowCount; r++) this._rowTimers[r] = this._rowCooldown;
+  };
+  DanmakuEngine.prototype.setIntensity = function (v) {
+    this._intensity = Math.max(0, Math.min(1, v));
+  };
+
+  Object.defineProperty(DanmakuEngine.prototype, 'activeCount', {
+    get: function () {
+      var n = 0;
+      for (var i = 0; i < this._pool.length; i++) {
+        if (this._pool[i].state !== 'dead') n++;
+      }
+      return n;
+    }
+  });
+
+  DanmakuEngine.prototype.update = function (dt) {
+    if (!this._running) return;
+    this._gameTime += dt;
+    for (var r = 0; r < this._rowCount; r++) this._rowTimers[r] += dt;
+
+    for (var i = 0; i < this._pool.length; i++) {
+      var item = this._pool[i];
+      if (item.state === 'dead') continue;
+
+      item.life += dt;
+      item.x -= item.speed * dt;
+      item._swayPhase += dt * item._swaySpeed;
+      item._sway = Math.sin(item._swayPhase) * item._swayAmp;
+
+      if (item.state === 'entering') {
+        item.enterTimer += dt;
+        if (item.enterTimer >= this.enterDuration) { item.state = 'floating'; item.alpha = 1; }
+        else { item.alpha = easeIn(item.enterTimer / this.enterDuration); }
+      } else if (item.state === 'floating') {
+        if (item.x < -item._textWidth) { item.state = 'exiting'; item.exitTimer = 0; }
+      } else if (item.state === 'exiting') {
+        item.exitTimer += dt;
+        if (item.exitTimer >= this.exitDuration) { item.state = 'dead'; item.alpha = 0; this._rowTimers[item._row] = 0; }
+        else { item.alpha = 1 - easeIn(item.exitTimer / this.exitDuration); }
+      }
+      if (item.life > 20 || item.x < -this.screenWidth) { item.state = 'dead'; item.alpha = 0; }
+    }
+
+    if (this._intensity <= 0) return;
+    this._spawnTimer += dt;
+    var interval = this.spawnMin + (this.spawnMax - this.spawnMin) * (1 - this._intensity * 0.7);
+    while (this._spawnTimer >= interval) {
+      this._spawnTimer -= interval + rand(-0.3, 0.3);
+      trySpawn(this);
+    }
+  };
+
+  function trySpawn(self) {
+    if (self.activeCount >= self.maxActive) return;
+    var item = null;
+    for (var i = 0; i < self._pool.length; i++) {
+      if (self._pool[i].state === 'dead') { item = self._pool[i]; break; }
+    }
+    if (!item) {
+      var oldest = null;
+      for (var i = 0; i < self._pool.length; i++) {
+        var p = self._pool[i];
+        if (p.state === 'dead') continue;
+        if (!oldest || p.x < oldest.x) oldest = p;
+      }
+      if (oldest) { oldest.state = 'dead'; item = oldest; } else return;
+    }
+
+    var avail = [];
+    for (var r = 0; r < self._rowCount; r++) {
+      if (self._rowTimers[r] >= self._rowCooldown) avail.push(r);
+    }
+    var row;
+    if (avail.length > 0) { row = pickRandom(avail); }
+    else {
+      var maxCd = -1;
+      for (var r2 = 0; r2 < self._rowCount; r2++) {
+        if (self._rowTimers[r2] > maxCd) { maxCd = self._rowTimers[r2]; row = r2; }
+      }
+    }
+
+    var usableH = self.screenHeight - self.marginTop - self.marginBottom;
+    var rowH = usableH / self._rowCount;
+    var y = self.marginTop + row * rowH + rowH / 2 + rand(-8, 8);
+
+    item.text = pickRandom(self.messages);
+    item.fontSize = rand(self.fontMin, self.fontMax);
+    item.speed = rand(self.speedMin, self.speedMax);
+    item.x = self.screenWidth + rand(20, 200);
+    item.y = y;
+    item.life = 0; item.alpha = 0;
+    item.state = 'entering'; item.enterTimer = 0; item.exitTimer = 0;
+    item._color = pickColor(); item._textWidth = item.text.length * item.fontSize * 0.8;
+    item._row = row; item._sway = 0;
+    item._swayPhase = Math.random() * Math.PI * 2;
+    item._swaySpeed = rand(0.8, 2.0); item._swayAmp = rand(1, 4);
+    self._rowTimers[row] = 0;
+  }
+
+  function easeIn(t) {
+    return t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+  }
+
+  DanmakuEngine.prototype.render = function (ctx) {
+    ctx.save();
+    for (var i = 0; i < this._pool.length; i++) {
+      var item = this._pool[i];
+      if (item.state === 'dead' || item.alpha <= 0.005) continue;
+      var c = item._color;
+      var a = item.alpha;
+      ctx.fillStyle = 'rgba(' + c[0] + ',' + c[1] + ',' + c[2] + ',' + a + ')';
+      ctx.font = item.fontSize + 'px "PingFang SC", system-ui, sans-serif';
+      ctx.textAlign = 'left';
+      ctx.textBaseline = 'middle';
+      var dy = item.y + (item._sway || 0);
+      ctx.fillText(item.text, item.x, dy);
+      ctx.fillStyle = 'rgba(' + c[0] + ',' + c[1] + ',' + c[2] + ',' + (a * 0.25) + ')';
+      ctx.fillText(item.text, item.x - 1, dy);
+    }
+    ctx.restore();
+  };
+
+  // === Demo 主逻辑 ===
+  var canvas = document.getElementById('canvas');
+  var ctx = canvas.getContext('2d');
+  var statusEl = document.getElementById('status');
+
+  var engine = new DanmakuEngine(null, { speedRange: [35, 70], spawnInterval: [1.2, 3.0] });
+  engine.start();
+
+  var paused = false;
+  var lastTime = performance.now();
+
+  function loop(ts) {
+    var dt = Math.min((ts - lastTime) / 1000, 0.1);
+    lastTime = ts;
+
+    // 黑背景
+    ctx.fillStyle = '#0a0806';
+    ctx.fillRect(0, 0, 1280, 720);
+
+    // 噪点
+    ctx.fillStyle = 'rgba(160, 150, 140, 0.02)';
+    for (var j = 0; j < 60; j++) {
+      ctx.fillRect(Math.random() * 1280, Math.random() * 720, 1.5, 1.5);
+    }
+
+    engine.update(dt);
+    engine.render(ctx);
+
+    statusEl.textContent = (paused ? '已暂停' : '运行中')
+      + ' | 活跃: ' + engine.activeCount + '/' + engine.maxActive
+      + ' | 强度: ' + Math.round(engine._intensity * 100) + '%'
+      + ' | 按 空格键 暂停';
+
+    requestAnimationFrame(loop);
+  }
+
+  window.addEventListener('keydown', function (e) {
+    switch (e.code) {
+      case 'Space':
+        e.preventDefault();
+        if (paused) { engine.resume(); paused = false; }
+        else { engine.pause(); paused = true; }
+        break;
+      case 'ArrowUp':
+        engine.setIntensity(Math.min(1, engine._intensity + 0.1));
+        break;
+      case 'ArrowDown':
+        engine.setIntensity(Math.max(0, engine._intensity - 0.1));
+        break;
+      case 'KeyR':
+        engine.stop();
+        engine.start();
+        paused = false;
+        break;
+    }
+  });
+
+  requestAnimationFrame(loop);
+})();
+</script>
+</body>
+</html>
