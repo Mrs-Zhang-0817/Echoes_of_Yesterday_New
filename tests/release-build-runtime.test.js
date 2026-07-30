@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { spawnSync } from 'node:child_process';
 import { join } from 'node:path';
 import test from 'node:test';
@@ -16,4 +16,5 @@ test('release build inlines the data modules required by boot', () => {
   assert.match(output, /\[\.\.\.GAME_CHAPTERS\]\.sort/);
   assert.match(output, /class FlashbackActivity/);
   assert.match(output, /class MontageActivity/);
+  assert.ok(existsSync(join(root, 'dist', 'server', 'index.js')));
 });

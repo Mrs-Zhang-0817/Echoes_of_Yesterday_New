@@ -3,6 +3,7 @@ const path = require('path');
 
 const SRC_DIR = path.join(__dirname, 'src');
 const OUT_DIR = path.join(__dirname, 'build_out');
+const SITE_OUT_DIR = path.join(__dirname, 'dist');
 const IMAGE_SRC_DIR = path.join(__dirname, 'assets', 'images');
 const IMAGE_OUT_DIR = path.join(OUT_DIR, 'assets', 'images');
 const VENDOR_SRC_DIR = path.join(__dirname, 'assets', 'vendor');
@@ -276,4 +277,16 @@ if (fs.existsSync(VENDOR_SRC_DIR)) fs.cpSync(VENDOR_SRC_DIR, VENDOR_OUT_DIR, { r
 const PIC_SRC = path.join(__dirname, 'assets', 'pictures');
 const PIC_OUT = path.join(OUT_DIR, 'assets', 'pictures');
 if (fs.existsSync(PIC_SRC)) fs.cpSync(PIC_SRC, PIC_OUT, { recursive: true, force: true });
+
+// Sites 发布入口：复用已验证的静态包，Worker 只负责把请求交给静态资源层。
+fs.rmSync(SITE_OUT_DIR, { recursive: true, force: true });
+fs.cpSync(OUT_DIR, SITE_OUT_DIR, { recursive: true, force: true });
+fs.mkdirSync(path.join(SITE_OUT_DIR, 'server'), { recursive: true });
+fs.writeFileSync(path.join(SITE_OUT_DIR, 'server', 'index.js'), `export default {
+  fetch(request, env) {
+    return env.ASSETS.fetch(request);
+  },
+};
+`, 'utf8');
+
 console.log(`Built: ${path.join(OUT_DIR, 'index.html')} (${Buffer.byteLength(html, 'utf8')} bytes)`);
